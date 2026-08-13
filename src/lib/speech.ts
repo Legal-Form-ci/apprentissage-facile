@@ -111,23 +111,22 @@ export function matchScore(expected: string, said: string) {
   const b = normalize(said);
   if (!a || !b) return 0;
   if (b === a || b.includes(a)) return 1;
-  const dist = levenshtein(a, b.slice(0, Math.max(a.length + 3, b.length)));
+  const dist: number = levenshtein(a, b.slice(0, Math.max(a.length + 3, b.length)));
   return Math.max(0, 1 - dist / Math.max(a.length, 1));
 }
 
 function levenshtein(a: string, b: string) {
   const m = a.length;
   const n = b.length;
-  const prev = new Array<number>(n + 1);
-  const cur = new Array<number>(n + 1);
-  for (let j = 0; j <= n; j++) prev[j] = j;
+  let prev: number[] = Array.from({ length: n + 1 }, (_, j) => j);
   for (let i = 1; i <= m; i++) {
+    const cur: number[] = new Array<number>(n + 1).fill(0);
     cur[0] = i;
     for (let j = 1; j <= n; j++) {
-      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
-      cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + cost);
+      const cost = a.charAt(i - 1) === b.charAt(j - 1) ? 0 : 1;
+      cur[j] = Math.min((prev[j] ?? 0) + 1, (cur[j - 1] ?? 0) + 1, (prev[j - 1] ?? 0) + cost);
     }
-    for (let j = 0; j <= n; j++) prev[j] = cur[j];
+    prev = cur;
   }
-  return prev[n];
+  return prev[n] ?? 0;
 }
