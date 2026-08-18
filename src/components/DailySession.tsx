@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Teacher } from "./Teacher";
-import { WritingCanvas } from "./WritingCanvas";
+import { Classroom, type Pose } from "./Classroom";
+import { GuidedWriting } from "./GuidedWriting";
 import { canListen, listenOnce, matchScore, normalize, speak, stopSpeaking } from "@/lib/speech";
 import { buildLesson, PRAISE, RETRY, type Activity } from "@/lib/curriculum";
+import { strokeAdvice } from "@/lib/letters";
 import { recordAnswer, saveProfile, type Profile } from "@/lib/store";
 
 const NUMBER_WORDS: Record<string, number> = {
@@ -20,34 +21,110 @@ function parseNumber(said: string): number | null {
   return null;
 }
 
-function instruction(a: Activity): { line: string; big: string; sub?: string } {
+/** Un temps de la démonstration : l'enseignant parle et le tableau montre. */
+type Step = { say: string; show: string; sub?: string; tap?: boolean; pose?: Pose };
+
+function stepsFor(a: Activity): Step[] {
   switch (a.kind) {
     case "letter":
-      return { line: `Regarde cette lettre. Elle se lit ${a.sound}. Écoute, puis répète : ${a.letter}.`, big: a.letter, sub: `se dit « ${a.sound} »` };
+      return [
+        {
+          say: `Regarde bien le tableau. Ce que tu vois, c'est ${a.sound}.`,
+          show: a.upper,
+          sub: `la grande lettre ${a.sound}`,
+          tap: true,
+        },
+        {
+          say: `Et ça aussi, c'est ${a.sound}. La petite.`,
+          show: a.lower,
+          sub: `la petite lettre ${a.sound}`,
+          tap: true,
+        },
+        {
+          say: `Les deux, c'est ${a.sound}. La grande et la petite, ${a.sound}. ${a.example}.`,
+          show: `${a.upper} ${a.lower}`,
+          sub: a.example,
+          tap: true,
+        },
+        {
+          say: `Maintenant, à toi. Dis avec moi : ${a.sound}.`,
+          show: `${a.upper} ${a.lower}`,
+          sub: `répète : ${a.sound}`,
+          pose: "listen",
+        },
+      ];
     case "syllable":
-      return {
-        line: `${a.parts[0]} et ${a.parts[1]} font ${a.syllable}. Colle les deux morceaux, puis lis tout seul.`,
-        big: `${a.parts[0]} + ${a.parts[1]} = ${a.syllable}`,
-        sub: "Lis à voix haute",
-      };
+      return [
+        { say: `Écoute. Ici j'ai ${a.parts[0]}.`, show: a.parts[0], tap: true },
+        { say: `Et ici j'ai ${a.parts[1]}.`, show: a.parts[1], tap: true },
+        {
+          say: `Je colle les deux morceaux : ${a.parts[0]} plus ${a.parts[1]} font ${a.syllable}.`,
+          show: `${a.parts[0]} + ${a.parts[1]} = ${a.syllable}`,
+          sub: "on colle les morceaux",
+          tap: true,
+        },
+        {
+          say: `À toi. Lis tout seul : ${a.syllable}.`,
+          show: a.syllable,
+          sub: `lis : ${a.syllable}`,
+          pose: "listen",
+        },
+      ];
     case "word":
-      return {
-        line: `Colle les morceaux et lis le mot : ${a.word}. C'est ${a.hint}.`,
-        big: a.pieces.join(" + ") + " = " + a.word,
-        sub: a.hint,
-      };
+      return [
+        {
+          say: `Regarde ce mot. Je le coupe en morceaux : ${a.pieces.join(", ")}.`,
+          show: a.pieces.join(" + "),
+          tap: true,
+        },
+        {
+          say: `Tout ensemble, ça fait ${a.word}. C'est ${a.hint}.`,
+          show: a.word,
+          sub: a.hint,
+          tap: true,
+        },
+        { say: `À toi. Lis le mot : ${a.word}.`, show: a.word, sub: `lis : ${a.word}`, pose: "listen" },
+      ];
     case "write":
-      return { line: `Regarde comment on écrit ${a.target}. Maintenant, c'est ton tour. Écris avec ton doigt.`, big: a.target };
+      return [
+        {
+          say: `Maintenant on écrit ${a.target}. Regarde le trait vert : ${strokeAdvice(a.target)}`,
+          show: a.target,
+          sub: "regarde le sens du trait",
+          tap: true,
+        },
+        {
+          say: "À toi. Écris avec ton doigt, doucement, comme moi.",
+          show: a.target,
+          sub: "écris avec ton doigt",
+          pose: "listen",
+        },
+      ];
     case "count":
-      return { line: "Compte avec moi. Combien de choses vois-tu ?", big: "🟠".repeat(a.answer) };
+      return [
+        {
+          say: "Comptons ensemble les choses sur le tableau.",
+          show: "🟠".repeat(a.answer),
+          tap: true,
+        },
+        {
+          say: "Alors, combien de choses vois-tu ? Dis le nombre.",
+          show: "🟠".repeat(a.answer),
+          sub: "dis le nombre",
+          pose: "listen",
+        },
+      ];
     case "money":
-      return { line: a.question, big: "💰", sub: a.question };
+      return [
+        { say: "Écoute bien cette histoire d'argent.", show: "💰", tap: true },
+        { say: a.question, show: "💰", sub: a.question, pose: "listen" },
+      ];
   }
 }
 
 function expectedSpoken(a: Activity): string {
   switch (a.kind) {
-    case "letter": return a.letter;
+    case "letter": return a.sound;
     case "syllable": return a.syllable;
     case "word": return a.word;
     case "write": return a.target;
@@ -66,34 +143,64 @@ export function DailySession({
   onFinish: () => void;
 }) {
   const lesson = buildLesson(profile.day);
-  const index = Math.min(profile.activityIndex, lesson.activities.length - 1);
+  const index = Math.min(Math.max(0, profile.activityIndex), lesson.activities.length - 1);
   const activity = lesson.activities[index] as Activity;
-  const info = instruction(activity);
+  const steps = stepsFor(activity);
 
-  const [line, setLine] = useState(info.line);
+  const [stepIndex, setStepIndex] = useState(0);
   const [speaking, setSpeaking] = useState(false);
   const [listening, setListening] = useState(false);
   const [feedback, setFeedback] = useState<"ok" | "retry" | null>(null);
   const [typed, setTyped] = useState("");
-  const lastSpoken = useRef("");
+  const [pose, setPose] = useState<Pose>("point");
+  const [line, setLine] = useState(steps[0]?.say ?? "");
+  const alive = useRef(true);
+  const runId = useRef(0);
 
-  const say = useCallback(async (text: string) => {
+  const step = steps[Math.min(stepIndex, steps.length - 1)] as Step;
+  const isAnswerStep = stepIndex >= steps.length - 1;
+
+  const say = useCallback(async (text: string, p: Pose = "point") => {
     setLine(text);
+    setPose(p);
     setSpeaking(true);
     await speak(text);
-    setSpeaking(false);
+    if (alive.current) setSpeaking(false);
   }, []);
 
   useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+      stopSpeaking();
+    };
+  }, []);
+
+  // Enchaînement automatique : l'enseignant parle, montre, tape, puis passe.
+  useEffect(() => {
+    const id = ++runId.current;
+    setStepIndex(0);
     setFeedback(null);
     setTyped("");
-    if (lastSpoken.current === activity.id) return;
-    lastSpoken.current = activity.id;
-    say(info.line);
+    let cancelled = false;
+
+    (async () => {
+      for (let i = 0; i < steps.length; i++) {
+        if (cancelled || id !== runId.current) return;
+        setStepIndex(i);
+        const s = steps[i] as Step;
+        await say(s.say, s.pose ?? "point");
+        if (cancelled || id !== runId.current) return;
+        if (i < steps.length - 1) await pause(450);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      stopSpeaking();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activity.id]);
-
-  useEffect(() => () => stopSpeaking(), []);
 
   function persist(next: Profile) {
     saveProfile(next);
@@ -101,24 +208,26 @@ export function DailySession({
   }
 
   async function judge(ok: boolean) {
+    runId.current++; // stoppe la démonstration en cours
     const updated = recordAnswer(profile, activity.id, ok);
     persist(updated);
     setFeedback(ok ? "ok" : "retry");
     const msg = ok
       ? (PRAISE[Math.floor(Math.random() * PRAISE.length)] as string)
       : (RETRY[Math.floor(Math.random() * RETRY.length)] as string);
-    await say(msg);
+    await say(msg, ok ? "happy" : "point");
     if (!ok) {
-      await say(`Écoute bien : ${expectedSpoken(activity)}.`);
+      await say(`Écoute encore : ${expectedSpoken(activity)}.`);
+      if (!alive.current) return;
       setFeedback(null);
-      lastSpoken.current = "";
-      await say(info.line);
+      setStepIndex(steps.length - 1);
+      await say(steps[steps.length - 1]?.say ?? "", "listen");
       return;
     }
-    next(updated);
+    goNext(updated);
   }
 
-  function next(base: Profile) {
+  function goNext(base: Profile) {
     const isLast = index >= lesson.activities.length - 1;
     if (isLast) {
       const session = {
@@ -142,16 +251,20 @@ export function DailySession({
       onFinish();
       return;
     }
+    // reprise exacte : l'avancement est enregistré tout de suite sur le téléphone
     persist({ ...base, activityIndex: index + 1, pendingSync: true });
   }
 
   async function answerBySpeech() {
     stopSpeaking();
+    setSpeaking(false);
     setListening(true);
+    setPose("listen");
     const said = await listenOnce(7000);
+    if (!alive.current) return;
     setListening(false);
     if (!said) {
-      await say("Je n'ai pas bien entendu. Parle encore une fois.");
+      await say("Je n'ai pas bien entendu. Parle encore une fois, doucement.", "listen");
       return;
     }
     check(said);
@@ -160,14 +273,14 @@ export function DailySession({
   function check(said: string) {
     if (activity.kind === "count" || activity.kind === "money") {
       const value = parseNumber(said);
-      judge(value !== null && value === activity.answer);
+      void judge(value !== null && value === activity.answer);
       return;
     }
-    judge(matchScore(expectedSpoken(activity), said) >= 0.6);
+    void judge(matchScore(expectedSpoken(activity), said) >= 0.6);
   }
 
   return (
-    <div className="mx-auto w-full max-w-xl space-y-5 px-4 py-6">
+    <div className="mx-auto w-full max-w-xl space-y-4 px-4 py-5">
       <div className="flex items-center justify-between text-sm font-semibold text-muted-foreground">
         <span>🎯 Défi du jour {lesson.day}</span>
         <span>
@@ -181,33 +294,43 @@ export function DailySession({
         />
       </div>
 
-      <Teacher line={line} speaking={speaking} onRepeat={() => say(line)} />
+      <Classroom
+        line={line}
+        pose={pose}
+        speaking={speaking}
+        onRepeat={() => void say(step.say, step.pose ?? "point")}
+      >
+        {activity.kind === "write" && isAnswerStep ? (
+          <GuidedWriting target={activity.target} onResult={(ok) => void judge(ok)} />
+        ) : (
+          <div className="flex min-h-[190px] flex-col items-center justify-center gap-2">
+            <p
+              className={`font-display leading-none ${
+                activity.kind === "count" ? "text-4xl" : "text-6xl"
+              } ${step.tap && speaking ? "animate-pulse-soft" : ""}`}
+            >
+              {step.show}
+            </p>
+            {step.sub ? <p className="text-lg text-white/80">{step.sub}</p> : null}
+            {feedback === "ok" ? <p className="text-3xl">🎉 ⭐</p> : null}
+          </div>
+        )}
+      </Classroom>
 
-      <div className="rounded-3xl bg-card p-6 text-center shadow-warm">
-        <p
-          className={`font-display leading-none text-card-foreground ${
-            activity.kind === "count" ? "text-4xl" : activity.kind === "money" ? "text-6xl" : "text-5xl"
-          }`}
-        >
-          {activity.kind === "write" ? null : info.big}
-        </p>
-        {activity.kind === "write" ? (
-          <WritingCanvas target={activity.target} onResult={judge} />
-        ) : null}
-        {info.sub && activity.kind !== "money" ? (
-          <p className="mt-3 text-lg text-muted-foreground">{info.sub}</p>
-        ) : null}
-        {feedback === "ok" ? <p className="mt-4 text-3xl">🎉 ⭐</p> : null}
+      {/* Sous-titres : ce que l'enseignant est en train de dire */}
+      <div className="rounded-2xl bg-card p-4 shadow-warm">
+        <p className="text-xs font-bold tracking-widest text-muted-foreground">SOUS-TITRES</p>
+        <p className="mt-1 text-xl leading-snug font-semibold text-card-foreground">{line}</p>
       </div>
 
-      {activity.kind !== "write" ? (
+      {activity.kind !== "write" || !isAnswerStep ? (
         <div className="space-y-3">
           {canListen() ? (
             <button
               onClick={answerBySpeech}
               className="w-full rounded-3xl bg-primary px-6 py-8 text-2xl font-bold text-primary-foreground shadow-warm"
             >
-              {listening ? "🎙️ Je t'écoute…" : "👄 Parler"}
+              {listening ? "🎙️ Je t'écoute…" : "👄 À moi de parler"}
             </button>
           ) : null}
           <form
@@ -234,11 +357,15 @@ export function DailySession({
       ) : null}
 
       <button
-        onClick={() => next(profile)}
+        onClick={() => goNext(profile)}
         className="w-full rounded-2xl bg-secondary px-4 py-4 text-lg font-semibold text-secondary-foreground"
       >
         ⏭️ Passer
       </button>
     </div>
   );
+}
+
+function pause(ms: number) {
+  return new Promise<void>((r) => setTimeout(r, ms));
 }
