@@ -71,7 +71,7 @@ export const STROKES: Record<string, string[]> = {
 /** Les gestes à faire pour écrire une lettre, une syllabe ou un mot court. */
 export function strokesFor(target: string): string[] {
   const key = (target[0] ?? "").toUpperCase();
-  return STROKES[key] ?? STROKES.I ?? [];
+  return STROKES[key] ?? STROKES["I"] ?? [];
 }
 
 /** Conseil parlé sur le sens du tracé. */
