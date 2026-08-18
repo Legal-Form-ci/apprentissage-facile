@@ -1,9 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import logo from "@/assets/envledeclic-logo.png.asset.json";
+
 import { Onboarding } from "@/components/Onboarding";
 import { DailySession } from "@/components/DailySession";
 import { speak } from "@/lib/speech";
+import { exportProfile, fromRecoveryCode, importProfileFile, toRecoveryCode } from "@/lib/backup";
+import { downloadCertificate } from "@/lib/certificate";
+import { askPermission, checkReminder, loadReminder, saveReminder } from "@/lib/reminders";
 import {
   loadProfile,
   masteredCount,
@@ -46,16 +49,20 @@ function App() {
     const p = loadProfile();
     if (p && p.name) {
       setProfile(p);
-      setView("home");
+      // Reprise exacte : si une séance était commencée, on repart au même exercice
+      setView(p.activityIndex > 0 ? "session" : "home");
     } else {
       setView("onboarding");
     }
+    checkReminder();
+    const rem = setInterval(checkReminder, 60000);
     setOnline(typeof navigator !== "undefined" ? navigator.onLine : true);
     const on = () => setOnline(true);
     const off = () => setOnline(false);
     window.addEventListener("online", on);
     window.addEventListener("offline", off);
     return () => {
+      clearInterval(rem);
       window.removeEventListener("online", on);
       window.removeEventListener("offline", off);
     };
@@ -75,7 +82,7 @@ function App() {
   if (view === "loading") {
     return (
       <main className="flex min-h-screen items-center justify-center bg-background">
-        <img src={logo.url} alt="N'nvlé Déclic" className="w-64" />
+        <img src={"/logo.png"} alt="N'nvlé Déclic" className="w-64" />
       </main>
     );
   }
@@ -151,7 +158,7 @@ function App() {
       <section className="mx-auto max-w-xl space-y-6 px-4 py-6">
         <div className="rounded-3xl bg-card p-5 shadow-warm">
           <div className="flex items-center gap-4">
-            <img src={logo.url} alt="" className="h-20 w-20 rounded-full object-cover object-top" />
+            <img src={"/logo.png"} alt="" className="h-20 w-20 rounded-full object-cover object-top" />
             <div>
               <h1 className="font-display text-2xl text-card-foreground">
                 Bonjour {profile.name} !
@@ -211,6 +218,8 @@ function App() {
           ) : null}
         </div>
 
+        <Tools profile={profile} onRestore={(p) => { setProfile(p); setView("home"); }} />
+
         <button
           onClick={() => {
             resetProfile();
@@ -221,8 +230,144 @@ function App() {
         >
           Nouvelle personne
         </button>
+        <Footer />
       </section>
     </main>
+  );
+}
+
+function Footer() {
+  return (
+    <p className="pt-2 pb-6 text-center text-sm font-semibold text-muted-foreground">
+      N'nvlé Déclic - par Inocent KOFFI
+    </p>
+  );
+}
+
+function Tools({
+  profile,
+  onRestore,
+}: {
+  profile: Profile;
+  onRestore: (p: Profile) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [code, setCode] = useState("");
+  const [msg, setMsg] = useState("");
+  const [reminder, setReminder] = useState(() => loadReminder());
+  const level = Math.max(1, Math.ceil(Math.max(1, profile.day - 1) / 30));
+
+  function updateReminder(next: typeof reminder) {
+    setReminder(next);
+    saveReminder(next);
+  }
+
+  return (
+    <div className="rounded-3xl bg-card p-5 shadow-warm">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="w-full text-left text-lg font-bold text-card-foreground"
+      >
+        {open ? "▾" : "▸"} Mon parcours, mes certificats et mes rappels
+      </button>
+
+      {open ? (
+        <div className="mt-4 space-y-4">
+          <div className="space-y-2">
+            <p className="font-semibold text-card-foreground">📥 Garder mon parcours</p>
+            <button
+              onClick={() => exportProfile(profile)}
+              className="w-full rounded-2xl bg-secondary px-4 py-3 font-semibold text-secondary-foreground"
+            >
+              Enregistrer sur mon téléphone
+            </button>
+            <button
+              onClick={() => {
+                setCode(toRecoveryCode(profile));
+                setMsg("Recopie ce code pour retrouver ton parcours sur un autre téléphone.");
+              }}
+              className="w-full rounded-2xl bg-secondary px-4 py-3 font-semibold text-secondary-foreground"
+            >
+              Voir mon code de récupération
+            </button>
+          </div>
+
+          <div className="space-y-2">
+            <p className="font-semibold text-card-foreground">📤 Retrouver mon parcours</p>
+            <input
+              type="file"
+              accept="application/json"
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                const restored = await importProfileFile(file);
+                if (restored) {
+                  onRestore(restored);
+                  setMsg("Parcours retrouvé. On continue !");
+                } else setMsg("Ce fichier n'est pas le bon.");
+              }}
+              className="w-full rounded-2xl border-2 border-border px-3 py-2 text-sm"
+            />
+            <textarea
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              placeholder="… ou colle ici ton code de récupération"
+              className="h-24 w-full rounded-2xl border-2 border-border bg-background p-3 text-xs"
+            />
+            <button
+              onClick={() => {
+                const restored = fromRecoveryCode(code);
+                if (restored) {
+                  saveProfile(restored);
+                  onRestore(restored);
+                  setMsg("Parcours retrouvé. On continue !");
+                } else setMsg("Ce code n'est pas valable.");
+              }}
+              className="w-full rounded-2xl bg-secondary px-4 py-3 font-semibold text-secondary-foreground"
+            >
+              Récupérer avec le code
+            </button>
+          </div>
+
+          <div className="space-y-2">
+            <p className="font-semibold text-card-foreground">🏅 Mon certificat</p>
+            <button
+              onClick={() => downloadCertificate(profile, level)}
+              className="w-full rounded-2xl bg-accent px-4 py-3 font-bold text-accent-foreground"
+            >
+              Télécharger mon certificat (PDF)
+            </button>
+          </div>
+
+          <div className="space-y-2">
+            <p className="font-semibold text-card-foreground">⏰ Mon rappel de 15 minutes</p>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={async () => {
+                  const next = { ...reminder, enabled: !reminder.enabled };
+                  if (next.enabled) await askPermission();
+                  updateReminder(next);
+                }}
+                className="rounded-2xl bg-secondary px-4 py-3 font-semibold text-secondary-foreground"
+              >
+                {reminder.enabled ? "Rappel activé ✅" : "Activer le rappel"}
+              </button>
+              <input
+                type="time"
+                value={`${String(reminder.hour).padStart(2, "0")}:${String(reminder.minute).padStart(2, "0")}`}
+                onChange={(e) => {
+                  const [h, m] = e.target.value.split(":");
+                  updateReminder({ ...reminder, hour: Number(h ?? 18), minute: Number(m ?? 0) });
+                }}
+                className="rounded-2xl border-2 border-border bg-background px-3 py-3"
+              />
+            </div>
+          </div>
+
+          {msg ? <p className="text-sm font-semibold text-primary">{msg}</p> : null}
+        </div>
+      ) : null}
+    </div>
   );
 }
 
