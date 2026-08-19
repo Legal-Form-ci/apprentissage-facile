@@ -5,37 +5,39 @@ export type LetterInfo = {
   lower: string;
   /** ce que l'enseignant prononce : le son de la lettre */
   sound: string;
+  /** son simple utilisé au niveau débutant */
+  beginnerSound: string;
   /** un mot repère de la vie quotidienne */
   example: string;
 };
 
 export const ALPHABET: LetterInfo[] = [
-  { upper: "A", lower: "a", sound: "a", example: "comme dans ananas" },
-  { upper: "B", lower: "b", sound: "bé", example: "comme dans banane" },
-  { upper: "C", lower: "c", sound: "cé", example: "comme dans cola" },
-  { upper: "D", lower: "d", sound: "dé", example: "comme dans dodo" },
-  { upper: "E", lower: "e", sound: "eu", example: "comme dans école" },
-  { upper: "F", lower: "f", sound: "effe", example: "comme dans farine" },
-  { upper: "G", lower: "g", sound: "gé", example: "comme dans gari" },
-  { upper: "H", lower: "h", sound: "ache", example: "comme dans hôpital" },
-  { upper: "I", lower: "i", sound: "i", example: "comme dans igname" },
-  { upper: "J", lower: "j", sound: "ji", example: "comme dans jardin" },
-  { upper: "K", lower: "k", sound: "ka", example: "comme dans kola" },
-  { upper: "L", lower: "l", sound: "elle", example: "comme dans lampe" },
-  { upper: "M", lower: "m", sound: "emme", example: "comme dans maman" },
-  { upper: "N", lower: "n", sound: "enne", example: "comme dans natte" },
-  { upper: "O", lower: "o", sound: "o", example: "comme dans orange" },
-  { upper: "P", lower: "p", sound: "pé", example: "comme dans papa" },
-  { upper: "Q", lower: "q", sound: "ku", example: "comme dans quatre" },
-  { upper: "R", lower: "r", sound: "erre", example: "comme dans riz" },
-  { upper: "S", lower: "s", sound: "esse", example: "comme dans sel" },
-  { upper: "T", lower: "t", sound: "té", example: "comme dans taxi" },
-  { upper: "U", lower: "u", sound: "u", example: "comme dans usine" },
-  { upper: "V", lower: "v", sound: "vé", example: "comme dans vélo" },
-  { upper: "W", lower: "w", sound: "double vé", example: "comme dans wagon" },
-  { upper: "X", lower: "x", sound: "ikse", example: "comme dans taxi" },
-  { upper: "Y", lower: "y", sound: "i grec", example: "comme dans yaourt" },
-  { upper: "Z", lower: "z", sound: "zède", example: "comme dans zéro" },
+  { upper: "A", lower: "a", sound: "a", beginnerSound: "aaa", example: "comme dans ananas" },
+  { upper: "B", lower: "b", sound: "bé", beginnerSound: "beurr", example: "comme dans banane" },
+  { upper: "C", lower: "c", sound: "cé", beginnerSound: "keu", example: "comme dans cola" },
+  { upper: "D", lower: "d", sound: "dé", beginnerSound: "deu", example: "comme dans dodo" },
+  { upper: "E", lower: "e", sound: "eu", beginnerSound: "euh", example: "comme dans école" },
+  { upper: "F", lower: "f", sound: "effe", beginnerSound: "feu", example: "comme dans farine" },
+  { upper: "G", lower: "g", sound: "gé", beginnerSound: "gueu", example: "comme dans gari" },
+  { upper: "H", lower: "h", sound: "ache", beginnerSound: "heu", example: "comme dans hôpital" },
+  { upper: "I", lower: "i", sound: "i", beginnerSound: "iii", example: "comme dans igname" },
+  { upper: "J", lower: "j", sound: "ji", beginnerSound: "jeu", example: "comme dans jardin" },
+  { upper: "K", lower: "k", sound: "ka", beginnerSound: "keu", example: "comme dans kola" },
+  { upper: "L", lower: "l", sound: "elle", beginnerSound: "leurr", example: "comme dans lampe" },
+  { upper: "M", lower: "m", sound: "emme", beginnerSound: "meunn", example: "comme dans maman" },
+  { upper: "N", lower: "n", sound: "enne", beginnerSound: "neunn", example: "comme dans natte" },
+  { upper: "O", lower: "o", sound: "o", beginnerSound: "ooo", example: "comme dans orange" },
+  { upper: "P", lower: "p", sound: "pé", beginnerSound: "peu", example: "comme dans papa" },
+  { upper: "Q", lower: "q", sound: "ku", beginnerSound: "keu", example: "comme dans quatre" },
+  { upper: "R", lower: "r", sound: "erre", beginnerSound: "reurr", example: "comme dans riz" },
+  { upper: "S", lower: "s", sound: "esse", beginnerSound: "seu", example: "comme dans sel" },
+  { upper: "T", lower: "t", sound: "té", beginnerSound: "teu", example: "comme dans taxi" },
+  { upper: "U", lower: "u", sound: "u", beginnerSound: "uuu", example: "comme dans usine" },
+  { upper: "V", lower: "v", sound: "vé", beginnerSound: "veu", example: "comme dans vélo" },
+  { upper: "W", lower: "w", sound: "double vé", beginnerSound: "weu", example: "comme dans wagon" },
+  { upper: "X", lower: "x", sound: "ikse", beginnerSound: "kseu", example: "comme dans taxi" },
+  { upper: "Y", lower: "y", sound: "i grec", beginnerSound: "yeu", example: "comme dans yaourt" },
+  { upper: "Z", lower: "z", sound: "zède", beginnerSound: "zeu", example: "comme dans zéro" },
 ];
 
 /** Tracé de la lettre, découpé en gestes numérotés (repère 100 x 100). */

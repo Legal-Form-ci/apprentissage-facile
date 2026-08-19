@@ -12,6 +12,8 @@ export function GuidedWriting({ target, onResult }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const drawing = useRef(false);
   const points = useRef<Array<{ x: number; y: number }>>([]);
+  const validationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const submitted = useRef(false);
   const [hasInk, setHasInk] = useState(false);
   const [replay, setReplay] = useState(0);
   const strokes = strokesFor(target);
@@ -28,6 +30,7 @@ export function GuidedWriting({ target, onResult }: Props) {
     if (!c || !ctx) return;
     ctx.clearRect(0, 0, c.width, c.height);
     points.current = [];
+    submitted.current = false;
     setHasInk(false);
   }
 
@@ -67,12 +70,14 @@ export function GuidedWriting({ target, onResult }: Props) {
 
   function end() {
     drawing.current = false;
+    if (validationTimer.current) clearTimeout(validationTimer.current);
+    validationTimer.current = setTimeout(validate, 900);
   }
 
   function validate() {
+    if (submitted.current) return;
     const pts = points.current;
     if (pts.length < 12) {
-      onResult(false);
       return;
     }
     const xs = pts.map((p) => p.x);
@@ -81,7 +86,10 @@ export function GuidedWriting({ target, onResult }: Props) {
     const h = Math.max(...ys) - Math.min(...ys);
     const c = canvasRef.current!;
     const ok = w > c.width * 0.12 && h > c.height * 0.35;
-    onResult(ok);
+    if (ok) {
+      submitted.current = true;
+      onResult(true);
+    }
   }
 
   return (
@@ -120,29 +128,10 @@ export function GuidedWriting({ target, onResult }: Props) {
           className="h-72 w-full touch-none rounded-3xl border-4 border-dashed border-primary/40 bg-card"
         />
       </div>
-      <p className="mt-2 text-base text-muted-foreground">
-        Suis le trait vert : il montre par où commencer et dans quel sens aller.
-      </p>
-      <div className="mt-3 flex flex-wrap justify-center gap-3">
-        <button
-          onClick={() => setReplay((n) => n + 1)}
-          className="rounded-full bg-accent px-5 py-3 text-lg font-bold text-accent-foreground"
-        >
-          👀 Montre-moi
-        </button>
-        <button
-          onClick={clear}
-          className="rounded-full bg-secondary px-5 py-3 text-lg font-semibold text-secondary-foreground"
-        >
-          🧽 Effacer
-        </button>
-        <button
-          onClick={validate}
-          disabled={!hasInk}
-          className="rounded-full bg-primary px-6 py-3 text-lg font-bold text-primary-foreground disabled:opacity-40"
-        >
-          ✅ J'ai fini
-        </button>
+      <div className="mt-3 flex items-center justify-center gap-4 text-3xl" aria-hidden="true">
+        <span className={hasInk ? "animate-pulse-soft" : "opacity-40"}>✍️</span>
+        <span>➡️</span>
+        <span>✅</span>
       </div>
     </div>
   );
