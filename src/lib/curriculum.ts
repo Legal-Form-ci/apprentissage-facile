@@ -11,7 +11,7 @@ export type SkillState =
   | "consolidee";
 
 export type Activity =
-  | { kind: "letter"; id: string; upper: string; lower: string; sound: string; example: string }
+  | { kind: "letter"; id: string; upper: string; lower: string; sound: string; name: string; example: string }
   | { kind: "syllable"; id: string; parts: [string, string]; syllable: string }
   | { kind: "word"; id: string; pieces: string[]; word: string; hint: string }
   | { kind: "write"; id: string; target: string }
@@ -74,9 +74,8 @@ export function buildLesson(day: number): Lesson {
   const syls = syllablesFor(known);
 
   const activities: Activity[] = [
-    { kind: "letter", id: `letter-${l1.upper}`, upper: l1.upper, lower: l1.lower, sound: l1.sound, example: l1.example },
-    { kind: "letter", id: `letter-${l2.upper}`, upper: l2.upper, lower: l2.lower, sound: l2.sound, example: l2.example },
-    { kind: "write", id: `write-${l1.upper}`, target: l1.upper },
+    { kind: "letter", id: `letter-${l1.upper}`, upper: l1.upper, lower: l1.lower, sound: l1.beginnerSound, name: l1.sound, example: l1.example },
+    { kind: "letter", id: `letter-${l2.upper}`, upper: l2.upper, lower: l2.lower, sound: l2.beginnerSound, name: l2.sound, example: l2.example },
   ];
 
   if (syls.length > 0) {
@@ -98,7 +97,10 @@ export function buildLesson(day: number): Lesson {
     }
   }
 
-  activities.push({ kind: "write", id: `write-${l2.upper}`, target: l2.upper });
+  if (d > 30) {
+    activities.splice(2, 0, { kind: "write", id: `write-${l1.upper}`, target: l1.upper });
+    activities.push({ kind: "write", id: `write-${l2.upper}`, target: l2.upper });
+  }
 
   const readable = WORDS.filter((w) => w.needs.split("").every((c) => known.includes(c)));
   if (readable.length > 0) {
@@ -128,11 +130,12 @@ export function buildLesson(day: number): Lesson {
   return {
     day: d,
     title:
-      d <= 13
-        ? "Je découvre l'alphabet, lettre par lettre"
-        : d <= 30
-          ? "Je colle les lettres et je lis des mots"
-          : "Je me débrouille dans la vie de tous les jours",
+      d <= 30 ? "Niveau 1 — J'écoute et je reconnais les sons"
+        : d <= 60 ? "Niveau 2 — Je forme des syllabes et je trace"
+          : d <= 90 ? "Niveau 3 — Je lis et j'écris des mots"
+            : d <= 120 ? "Niveau 4 — Je construis des phrases"
+              : d <= 150 ? "Niveau 5 — Je lis et j'écris dans la vie"
+                : "Niveau 6 — Je rédige seul des messages et des textes",
     activities,
   };
 }

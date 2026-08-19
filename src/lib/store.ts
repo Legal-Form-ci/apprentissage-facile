@@ -25,6 +25,7 @@ export type Profile = {
   name: string;
   city: string;
   phone: string;
+  gender: "garcon" | "fille" | "";
   startedAt: string;
   day: number;
   activityIndex: number;
@@ -33,6 +34,9 @@ export type Profile = {
   sessions: SessionRecord[];
   certificates: Array<{ level: number; date: string }>;
   pendingSync: boolean;
+  gender: "M" | "F" | "O" | null;
+  level: number;
+  onboardingComplete: boolean;
 };
 
 const STATES: SkillState[] = [
@@ -49,6 +53,7 @@ export function emptyProfile(): Profile {
     name: "",
     city: "",
     phone: "",
+    gender: "",
     startedAt: new Date().toISOString(),
     day: 1,
     activityIndex: 0,
@@ -57,13 +62,16 @@ export function emptyProfile(): Profile {
     sessions: [],
     certificates: [],
     pendingSync: false,
+    gender: null,
+    level: 1,
+    onboardingComplete: false,
   };
 }
 
 export function loadProfile(): Profile | null {
   if (typeof window === "undefined") return null;
   try {
-    const raw = window.localStorage.getItem(KEY);
+    const raw = window.localStorage.getItem(KEY) ?? window.localStorage.getItem(`${KEY}-backup`);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Profile;
     if (!parsed?.id) return null;
@@ -77,13 +85,22 @@ export function saveProfile(profile: Profile) {
   if (typeof window === "undefined") return;
   try {
     window.localStorage.setItem(KEY, JSON.stringify(profile));
+    window.localStorage.setItem(`${KEY}-backup`, JSON.stringify(profile));
   } catch {
     /* stockage indisponible */
   }
 }
 
 export function resetProfile() {
-  if (typeof window !== "undefined") window.localStorage.removeItem(KEY);
+  if (typeof window !== "undefined") {
+    window.localStorage.removeItem(KEY);
+    window.localStorage.removeItem(`${KEY}-backup`);
+  }
+}
+
+/** Six niveaux progressifs, de l'oral jusqu'à la rédaction autonome. */
+export function learningLevel(day: number) {
+  return Math.min(6, Math.max(1, Math.ceil(day / 30)));
 }
 
 /** Met à jour l'état de maîtrise d'une compétence après une réponse. */

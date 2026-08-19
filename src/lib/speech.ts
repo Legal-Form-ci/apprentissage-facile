@@ -11,6 +11,7 @@ function pickVoice() {
   if (cachedVoice) return cachedVoice;
   const voices = window.speechSynthesis.getVoices();
   cachedVoice =
+    voices.find((v) => /fr[-_](ci|sn|cm|bf)/i.test(v.lang)) ??
     voices.find((v) => v.lang.toLowerCase().startsWith("fr")) ?? voices[0] ?? null;
   return cachedVoice;
 }
@@ -22,8 +23,8 @@ export function speak(text: string, opts: { rate?: number } = {}): Promise<void>
       window.speechSynthesis.cancel();
       const u = new SpeechSynthesisUtterance(text);
       u.lang = "fr-FR";
-      u.rate = opts.rate ?? 0.9;
-      u.pitch = 1;
+      u.rate = opts.rate ?? 0.82;
+      u.pitch = 0.88;
       const v = pickVoice();
       if (v) u.voice = v;
       u.onend = () => resolve();
@@ -39,6 +40,28 @@ export function speak(text: string, opts: { rate?: number } = {}): Promise<void>
 
 export function stopSpeaking() {
   if (canSpeak()) window.speechSynthesis.cancel();
+}
+
+export function playEncouragement(ok: boolean) {
+  if (typeof window === "undefined") return;
+  const WithWebkit = window as typeof window & { webkitAudioContext?: typeof AudioContext };
+  const AudioContextClass = window.AudioContext ?? WithWebkit.webkitAudioContext;
+  if (!AudioContextClass) return;
+  const ctx = new AudioContextClass();
+  const now = ctx.currentTime;
+  const notes = ok ? [523, 659, 784, 1046] : [190, 160];
+  notes.forEach((frequency, i) => {
+    const oscillator = ctx.createOscillator();
+    const gain = ctx.createGain();
+    oscillator.type = ok ? "triangle" : "sine";
+    oscillator.frequency.value = frequency;
+    gain.gain.setValueAtTime(ok ? 0.14 : 0.08, now + i * 0.12);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.12 + 0.18);
+    oscillator.connect(gain).connect(ctx.destination);
+    oscillator.start(now + i * 0.12);
+    oscillator.stop(now + i * 0.12 + 0.2);
+  });
+  setTimeout(() => void ctx.close(), 1000);
 }
 
 type Recognition = {
@@ -110,7 +133,13 @@ export function matchScore(expected: string, said: string) {
   const a = normalize(expected);
   const b = normalize(said);
   if (!a || !b) return 0;
-  if (b === a || b.includes(a)) return 1;
+  if (b === a || b.includes(a) || a.includes(b)) return 1;
+  const phoneticAliases: Record<string, string[]> = {
+    aaa: ["a", "ah"], iii: ["i", "hi"], ooo: ["o", "oh"], uuu: ["u"],
+    meunn: ["m", "me", "mon", "meun"], leurr: ["l", "le", "leur", "lor"],
+    beurr: ["b", "be", "beu", "bor"], reurr: ["r", "re", "reur", "ror"],
+  };
+  if (phoneticAliases[a]?.some((alias) => b === alias || b.includes(alias))) return 0.95;
   const dist: number = levenshtein(a, b.slice(0, Math.max(a.length + 3, b.length)));
   return Math.max(0, 1 - dist / Math.max(a.length, 1));
 }
