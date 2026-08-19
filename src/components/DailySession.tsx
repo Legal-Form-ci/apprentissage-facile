@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Classroom, type Pose } from "./Classroom";
 import { GuidedWriting } from "./GuidedWriting";
-import { canListen, listenOnce, matchScore, normalize, speak, stopSpeaking } from "@/lib/speech";
+import { canListen, listenOnce, matchScore, normalize, playEncouragement, speak, stopSpeaking } from "@/lib/speech";
 import { buildLesson, PRAISE, RETRY, type Activity } from "@/lib/curriculum";
 import { strokeAdvice } from "@/lib/letters";
 import { recordAnswer, saveProfile, type Profile } from "@/lib/store";
@@ -29,19 +29,19 @@ function stepsFor(a: Activity): Step[] {
     case "letter":
       return [
         {
-          say: `Regarde bien le tableau. Ce que tu vois, c'est ${a.sound}.`,
+          say: `Regarde bien le tableau. Ici, tu vois le son... ${a.sound}.`,
           show: a.upper,
           sub: `la grande lettre ${a.sound}`,
           tap: true,
         },
         {
-          say: `Et ça aussi, c'est ${a.sound}. La petite.`,
+          say: `Ici, c'est la petite forme. Elle fait aussi... ${a.sound}.`,
           show: a.lower,
           sub: `la petite lettre ${a.sound}`,
           tap: true,
         },
         {
-          say: `Les deux, c'est ${a.sound}. La grande et la petite, ${a.sound}. ${a.example}.`,
+          say: `La grande et la petite font le même son... ${a.sound}. ${a.example}.`,
           show: `${a.upper} ${a.lower}`,
           sub: a.example,
           tap: true,
@@ -58,7 +58,7 @@ function stepsFor(a: Activity): Step[] {
         { say: `Écoute. Ici j'ai ${a.parts[0]}.`, show: a.parts[0], tap: true },
         { say: `Et ici j'ai ${a.parts[1]}.`, show: a.parts[1], tap: true },
         {
-          say: `Je colle les deux morceaux : ${a.parts[0]} plus ${a.parts[1]} font ${a.syllable}.`,
+          say: `${soundForPart(a.parts[0])}... ${soundForPart(a.parts[1])}... ${a.syllable}. Encore. ${soundForPart(a.parts[0])}... ${soundForPart(a.parts[1])}... ${a.syllable}.`,
           show: `${a.parts[0]} + ${a.parts[1]} = ${a.syllable}`,
           sub: "on colle les morceaux",
           tap: true,
@@ -212,16 +212,18 @@ export function DailySession({
     const updated = recordAnswer(profile, activity.id, ok);
     persist(updated);
     setFeedback(ok ? "ok" : "retry");
+    playEncouragement(ok);
     const msg = ok
       ? (PRAISE[Math.floor(Math.random() * PRAISE.length)] as string)
-      : (RETRY[Math.floor(Math.random() * RETRY.length)] as string);
+      : `Ça va aller. Écoute bien. C'est... ${expectedSpoken(activity)}. Maintenant, dis... ${expectedSpoken(activity)}.`;
     await say(msg, ok ? "happy" : "point");
     if (!ok) {
-      await say(`Écoute encore : ${expectedSpoken(activity)}.`);
+      await pause(300);
       if (!alive.current) return;
       setFeedback(null);
       setStepIndex(steps.length - 1);
       await say(steps[steps.length - 1]?.say ?? "", "listen");
+      await answerBySpeech();
       return;
     }
     goNext(updated);
@@ -264,7 +266,8 @@ export function DailySession({
     if (!alive.current) return;
     setListening(false);
     if (!said) {
-      await say("Je n'ai pas bien entendu. Parle encore une fois, doucement.", "listen");
+      await say(`Ce n'est pas grave. Écoute : ${expectedSpoken(activity)}. À toi maintenant.`, "listen");
+      if (alive.current) await answerBySpeech();
       return;
     }
     check(said);
@@ -276,7 +279,7 @@ export function DailySession({
       void judge(value !== null && value === activity.answer);
       return;
     }
-    void judge(matchScore(expectedSpoken(activity), said) >= 0.6);
+    void judge(matchScore(expectedSpoken(activity), said) >= 0.42);
   }
 
   return (

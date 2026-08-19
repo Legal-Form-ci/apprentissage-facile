@@ -47,7 +47,7 @@ function App() {
 
   useEffect(() => {
     const p = loadProfile();
-    if (p && p.name) {
+    if (p && p.onboardingComplete) {
       setProfile(p);
       // Reprise exacte : si une séance était commencée, on repart au même exercice
       setView(p.activityIndex > 0 ? "session" : "home");
@@ -115,7 +115,7 @@ function App() {
   }
 
   if (view === "celebrate") {
-    const level = Math.max(1, Math.ceil((profile.day - 1) / 30));
+    const level = Math.min(6, Math.max(1, Math.ceil(profile.day / 30)));
     return (
       <main className="min-h-screen bg-background">
         <Header online={online} />
@@ -255,7 +255,7 @@ function Tools({
   const [code, setCode] = useState("");
   const [msg, setMsg] = useState("");
   const [reminder, setReminder] = useState(() => loadReminder());
-  const level = Math.max(1, Math.ceil(Math.max(1, profile.day - 1) / 30));
+  const level = Math.min(6, Math.max(1, Math.ceil(profile.day / 30)));
 
   function updateReminder(next: typeof reminder) {
     setReminder(next);
