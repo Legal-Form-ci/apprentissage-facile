@@ -197,7 +197,7 @@ export function DailySession({
         const s = steps[i] as Step;
         await say(s.say, s.pose ?? "point");
         if (cancelled || id !== runId.current) return;
-        if (i < steps.length - 1) await pause(450);
+        if (i < steps.length - 1) await pause(1100);
       }
     })();
 
@@ -224,7 +224,7 @@ export function DailySession({
       : `Ça va aller. Écoute bien. C'est... ${expectedSpoken(activity)}. Maintenant, dis... ${expectedSpoken(activity)}.`;
     await say(msg, ok ? "happy" : "point");
     if (!ok) {
-      await pause(300);
+      await pause(900);
       if (!alive.current) return;
       setFeedback(null);
       setStepIndex(steps.length - 1);
@@ -268,7 +268,7 @@ export function DailySession({
     setSpeaking(false);
     setListening(true);
     setPose("listen");
-    const said = await listenOnce(7000);
+    const said = await listenOnce(13000);
     if (!alive.current) return;
     setListening(false);
     if (!said) {

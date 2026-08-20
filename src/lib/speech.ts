@@ -140,7 +140,7 @@ export function canListen() {
 }
 
 /** Écoute une réponse courte. Résout avec le texte entendu ("" si rien). */
-export function listenOnce(timeoutMs = 6000): Promise<string> {
+export function listenOnce(timeoutMs = 12000): Promise<string> {
   if (!canListen()) return Promise.resolve("");
   const w = window as any;
   const Ctor = w.SpeechRecognition || w.webkitSpeechRecognition;
