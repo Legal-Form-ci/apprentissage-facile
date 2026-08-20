@@ -3,7 +3,7 @@ import { Classroom, type Pose } from "./Classroom";
 import { GuidedWriting } from "./GuidedWriting";
 import { canListen, listenOnce, matchScore, normalize, playEncouragement, speak, stopSpeaking } from "@/lib/speech";
 import { buildLesson, PRAISE, RETRY, type Activity } from "@/lib/curriculum";
-import { strokeAdvice } from "@/lib/letters";
+import { ALPHABET, strokeAdvice } from "@/lib/letters";
 import { recordAnswer, saveProfile, type Profile } from "@/lib/store";
 
 const NUMBER_WORDS: Record<string, number> = {
@@ -19,6 +19,12 @@ function parseNumber(said: string): number | null {
     if (t.includes(word)) return value;
   }
   return null;
+}
+
+/** Son débutant d'un morceau de syllabe (lettre) : « meunn », « aaa »… */
+function soundForPart(part: string): string {
+  const info = ALPHABET.find((l) => l.upper === part.toUpperCase());
+  return info ? info.beginnerSound : part;
 }
 
 /** Un temps de la démonstration : l'enseignant parle et le tableau montre. */

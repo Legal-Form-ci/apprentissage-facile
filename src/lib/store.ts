@@ -26,6 +26,8 @@ export type Profile = {
   city: string;
   phone: string;
   gender: "garcon" | "fille" | "";
+  level: number;
+  onboardingComplete: boolean;
   startedAt: string;
   day: number;
   activityIndex: number;
