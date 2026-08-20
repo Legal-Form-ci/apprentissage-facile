@@ -1,4 +1,5 @@
 // Moteur vocal : voix de l'enseignant (TTS) + écoute de l'apprenant (STT)
+import { speakServer } from "./tts.functions";
 
 export function canSpeak() {
   return typeof window !== "undefined" && "speechSynthesis" in window;
@@ -16,22 +17,68 @@ function pickVoice() {
   return cachedVoice;
 }
 
-export function speak(text: string, opts: { rate?: number } = {}): Promise<void> {
+/** Voix naturelle ivoirienne générée côté serveur, mise en cache par phrase. */
+const audioCache = new Map<string, string>();
+let currentAudio: HTMLAudioElement | null = null;
+let serverVoiceOk = true;
+
+async function speakNatural(text: string): Promise<boolean> {
+  if (!serverVoiceOk || typeof window === "undefined") return false;
+  try {
+    let base64 = audioCache.get(text);
+    if (!base64) {
+      const res = await speakServer({ data: { text: text.slice(0, 900) } });
+      if (!res?.audio) {
+        serverVoiceOk = false;
+        return false;
+      }
+      base64 = res.audio;
+      if (audioCache.size > 120) audioCache.clear();
+      audioCache.set(text, base64);
+    }
+    const audio = new Audio(`data:audio/mpeg;base64,${base64}`);
+    currentAudio = audio;
+    await new Promise<void>((resolve) => {
+      audio.onended = () => resolve();
+      audio.onerror = () => resolve();
+      void audio.play().catch(() => resolve());
+    });
+    if (currentAudio === audio) currentAudio = null;
+    return true;
+  } catch {
+    serverVoiceOk = false;
+    return false;
+  }
+}
+
+/** Prononciation posée : on ralentit et on respire entre les phrases. */
+export async function speak(text: string, opts: { rate?: number } = {}): Promise<void> {
+  stopSpeaking();
+  const natural = await speakNatural(text);
+  if (natural) {
+    await new Promise((r) => setTimeout(r, 700));
+    return;
+  }
+  await speakBrowser(text, opts);
+  await new Promise((r) => setTimeout(r, 700));
+}
+
+function speakBrowser(text: string, opts: { rate?: number } = {}): Promise<void> {
   if (!canSpeak()) return Promise.resolve();
   return new Promise((resolve) => {
     try {
       window.speechSynthesis.cancel();
       const u = new SpeechSynthesisUtterance(text);
       u.lang = "fr-FR";
-      u.rate = opts.rate ?? 0.82;
-      u.pitch = 0.88;
+      u.rate = opts.rate ?? 0.7;
+      u.pitch = 0.85;
       const v = pickVoice();
       if (v) u.voice = v;
       u.onend = () => resolve();
       u.onerror = () => resolve();
       window.speechSynthesis.speak(u);
       // filet de sécurité si onend ne se déclenche pas
-      setTimeout(resolve, Math.min(15000, 1200 + text.length * 90));
+      setTimeout(resolve, Math.min(22000, 1500 + text.length * 120));
     } catch {
       resolve();
     }
@@ -40,7 +87,17 @@ export function speak(text: string, opts: { rate?: number } = {}): Promise<void>
 
 export function stopSpeaking() {
   if (canSpeak()) window.speechSynthesis.cancel();
+  if (currentAudio) {
+    try {
+      currentAudio.pause();
+      currentAudio.currentTime = 0;
+    } catch {
+      /* ignore */
+    }
+    currentAudio = null;
+  }
 }
+
 
 export function playEncouragement(ok: boolean) {
   if (typeof window === "undefined") return;
@@ -83,7 +140,7 @@ export function canListen() {
 }
 
 /** Écoute une réponse courte. Résout avec le texte entendu ("" si rien). */
-export function listenOnce(timeoutMs = 6000): Promise<string> {
+export function listenOnce(timeoutMs = 12000): Promise<string> {
   if (!canListen()) return Promise.resolve("");
   const w = window as any;
   const Ctor = w.SpeechRecognition || w.webkitSpeechRecognition;
