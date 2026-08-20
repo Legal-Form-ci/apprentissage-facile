@@ -36,9 +36,6 @@ export type Profile = {
   sessions: SessionRecord[];
   certificates: Array<{ level: number; date: string }>;
   pendingSync: boolean;
-  gender: "M" | "F" | "O" | null;
-  level: number;
-  onboardingComplete: boolean;
 };
 
 const STATES: SkillState[] = [
@@ -64,7 +61,6 @@ export function emptyProfile(): Profile {
     sessions: [],
     certificates: [],
     pendingSync: false,
-    gender: null,
     level: 1,
     onboardingComplete: false,
   };
