@@ -199,7 +199,15 @@ export function DailySession({
         if (cancelled || id !== runId.current) return;
         if (i < steps.length - 1) await pause(1100);
       }
+      if (cancelled || id !== runId.current) return;
+      // L'oreille s'ouvre toute seule : l'apprenant n'a qu'à parler.
+      if (activity.kind !== "write" && canListen()) {
+        await pause(500);
+        if (cancelled || id !== runId.current) return;
+        await answerBySpeech();
+      }
     })();
+
 
     return () => {
       cancelled = true;
