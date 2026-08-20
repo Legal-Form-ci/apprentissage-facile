@@ -42,9 +42,12 @@ export function setClarity(next: Clarity) {
   }
 }
 
-/** Articulation : on écarte légèrement les mots pour que la voix soit plus nette. */
+/** Articulation : on ajoute de courtes respirations pour que la voix soit plus nette. */
 export function articulate(text: string, level = getClarity().articulation) {
   if (level <= 0) return text;
-  const gap = level >= 2 ? " ... " : " , ";
-  return text.replace(/([,.!?])\s+/g, "$1 ").split(/\s+/).join(level >= 2 ? gap : " ").replace(/\s+,\s+/g, ", ");
+  const words = text.split(/\s+/);
+  const every = level >= 2 ? 3 : 5;
+  return words
+    .map((w, i) => (i > 0 && i % every === 0 && !/[,.!?…]$/.test(words[i - 1] ?? "") ? `, ${w}` : w))
+    .join(" ");
 }
