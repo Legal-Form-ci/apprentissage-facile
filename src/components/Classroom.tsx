@@ -3,9 +3,9 @@ import type { ReactNode } from "react";
 export type Pose = "point" | "happy" | "listen";
 
 const IMAGES: Record<Pose, string> = {
-  point: "/prof-point.jpg",
-  happy: "/prof-happy.jpg",
-  listen: "/prof-listen.jpg",
+  point: "/prof-point.png",
+  happy: "/prof-happy.png",
+  listen: "/prof-listen.png",
 };
 
 /** La salle de classe : le tableau, l'enseignant animé et son bâton. */
