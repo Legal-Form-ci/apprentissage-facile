@@ -197,12 +197,12 @@ export function DailySession({
         const s = steps[i] as Step;
         await say(s.say, s.pose ?? "point");
         if (cancelled || id !== runId.current) return;
-        if (i < steps.length - 1) await pause(1100);
+        if (i < steps.length - 1) await pause(400);
       }
       if (cancelled || id !== runId.current) return;
       // L'oreille s'ouvre toute seule : l'apprenant n'a qu'à parler.
       if (activity.kind !== "write" && canListen()) {
-        await pause(500);
+        await pause(250);
         if (cancelled || id !== runId.current) return;
         await answerBySpeech();
       }
@@ -232,7 +232,7 @@ export function DailySession({
       : `Ça va aller. Écoute bien. C'est... ${expectedSpoken(activity)}. Maintenant, dis... ${expectedSpoken(activity)}.`;
     await say(msg, ok ? "happy" : "point");
     if (!ok) {
-      await pause(900);
+      await pause(400);
       if (!alive.current) return;
       setFeedback(null);
       setStepIndex(steps.length - 1);
