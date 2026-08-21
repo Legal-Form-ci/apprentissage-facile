@@ -279,7 +279,7 @@ export function DailySession({
     const said = await listenOnce(13000);
     if (!alive.current) return;
     setListening(false);
-    if (!said) {
+    if (!said.text.trim()) {
       await say(`Ce n'est pas grave. Écoute : ${expectedSpoken(activity)}. À toi maintenant.`, "listen");
       if (alive.current) await answerBySpeech();
       return;
@@ -287,13 +287,13 @@ export function DailySession({
     check(said);
   }
 
-  function check(said: string) {
+  function check(said: HeardResult) {
     if (activity.kind === "count" || activity.kind === "money") {
-      const value = parseNumber(said);
+      const value = parseNumber(said.text);
       void judge(value !== null && value === activity.answer);
       return;
     }
-    void judge(matchScore(expectedSpoken(activity), said) >= 0.42);
+    void judge(bestScore(expectedSpoken(activity), said) >= 0.42);
   }
 
   return (
