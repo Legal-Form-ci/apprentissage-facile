@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Classroom, type Pose } from "./Classroom";
 import { GuidedWriting } from "./GuidedWriting";
-import { canListen, listenOnce, matchScore, normalize, playEncouragement, speak, stopSpeaking } from "@/lib/speech";
+import { bestScore, canListen, listenOnce, normalize, playEncouragement, speak, stopSpeaking, type HeardResult } from "@/lib/speech";
 import { buildLesson, PRAISE, RETRY, type Activity } from "@/lib/curriculum";
 import { ALPHABET, strokeAdvice } from "@/lib/letters";
 import { recordAnswer, saveProfile, type Profile } from "@/lib/store";
