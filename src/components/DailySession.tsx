@@ -290,7 +290,22 @@ export function DailySession({
     persist({ ...base, activityIndex: index + 1, pendingSync: true });
   }
 
-  async function answerBySpeech() {
+  /** Mini-quiz oral après la consigne : « tu as compris ? oui ou non » */
+  async function askQuiz(): Promise<boolean | null> {
+    await say("Dis-moi : est-ce que tu as compris ? Réponds oui, ou non.", "listen");
+    setListening(true);
+    setPose("listen");
+    const heard = await listenOnce(7000);
+    setListening(false);
+    if (!alive.current) return null;
+    const t = normalize(heard.text + " " + heard.alternatives.join(" "));
+    if (/\b(non|no|pas)\b/.test(t)) return false;
+    if (/\b(oui|ouais|voila|dacord|daccord|ok|hm)\b/.test(t) || heard.voiced) return true;
+    return null;
+  }
+
+  /** Écoute la réponse, avec relance douce quand l'apprenant hésite. */
+  async function answerBySpeech(tries = 0) {
     stopSpeaking();
     setSpeaking(false);
     setListening(true);
@@ -299,11 +314,34 @@ export function DailySession({
     if (!alive.current) return;
     setListening(false);
     if (!said.text.trim()) {
-      await say(`Ce n'est pas grave. Écoute : ${expectedSpoken(activity)}. À toi maintenant.`, "listen");
-      if (alive.current) await answerBySpeech();
+      // Relance automatique : une pause de plus, puis une répétition courte
+      // exactement au même moment pédagogique.
+      await pause(700);
+      if (!alive.current) return;
+      const short = `${expectedSpoken(activity)}. À toi.`;
+      await say(tries === 0 ? `Je t'écoute. Écoute encore : ${short}` : `Doucement. ${short}`, "listen");
+      if (alive.current) await answerBySpeech(tries + 1);
       return;
     }
     check(said);
+  }
+
+  /** Prononciation guidée : on refait dire uniquement ce qui est difficile. */
+  async function refinePronunciation(score: number) {
+    if (score >= 0.75 || !canListen()) return;
+    await say(`On le dit encore une fois, bien fort : ${expectedSpoken(activity)}.`, "listen");
+    if (!alive.current) return;
+    setListening(true);
+    const again = await listenOnce(9000);
+    setListening(false);
+    if (!alive.current) return;
+    const next = bestScore(expectedSpoken(activity), again);
+    await say(
+      next > score
+        ? "Voilà ! C'est beaucoup mieux. Ta bouche a bien travaillé."
+        : `Ça va aller. Écoute-moi : ${expectedSpoken(activity)}. On avance, tu vas y arriver.`,
+      next > score ? "happy" : "point",
+    );
   }
 
   function check(said: HeardResult) {
@@ -312,7 +350,8 @@ export function DailySession({
       void judge(value !== null && value === activity.answer);
       return;
     }
-    void judge(bestScore(expectedSpoken(activity), said) >= 0.42);
+    const score = bestScore(expectedSpoken(activity), said);
+    void judge(score >= 0.42, score);
   }
 
   return (
