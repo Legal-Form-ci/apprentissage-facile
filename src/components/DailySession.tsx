@@ -240,7 +240,7 @@ export function DailySession({
     setProfile(next);
   }
 
-  async function judge(ok: boolean) {
+  async function judge(ok: boolean, score = 1) {
     runId.current++; // stoppe la démonstration en cours
     const updated = recordAnswer(profile, activity.id, ok);
     persist(updated);
@@ -259,6 +259,8 @@ export function DailySession({
       await answerBySpeech();
       return;
     }
+    if (ok) await refinePronunciation(score);
+    if (!alive.current) return;
     goNext(updated);
   }
 
@@ -402,7 +404,7 @@ export function DailySession({
         <div className="space-y-3">
           {canListen() ? (
             <button
-              onClick={answerBySpeech}
+              onClick={() => void answerBySpeech()}
               className="w-full rounded-3xl bg-primary px-6 py-8 text-2xl font-bold text-primary-foreground shadow-warm"
             >
               {listening ? "🎙️ Je t'écoute…" : "👄 À moi de parler"}
