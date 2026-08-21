@@ -11,9 +11,9 @@ export type Clarity = {
 const KEY = "nnvle-clarity-v1";
 
 export const CLARITY_PRESETS: Array<{ id: string; label: string; icon: string; value: Clarity }> = [
-  { id: "lent", label: "Très clair, très lent", icon: "🐢", value: { volume: 1, speed: 0.72, articulation: 2 } },
-  { id: "normal", label: "Clair et posé", icon: "🙂", value: { volume: 1, speed: 0.92, articulation: 1 } },
-  { id: "rapide", label: "Normal, plus vif", icon: "🐇", value: { volume: 0.95, speed: 1.08, articulation: 0 } },
+  { id: "lent", label: "Très clair, plus posé", icon: "🐢", value: { volume: 1, speed: 0.85, articulation: 2 } },
+  { id: "normal", label: "Tempo normal", icon: "🙂", value: { volume: 1, speed: 1, articulation: 1 } },
+  { id: "rapide", label: "Plus vif", icon: "🐇", value: { volume: 1, speed: 1.12, articulation: 0 } },
 ];
 
 export const DEFAULT_CLARITY: Clarity = CLARITY_PRESETS[1]!.value;

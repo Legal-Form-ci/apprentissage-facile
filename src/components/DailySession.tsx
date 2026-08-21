@@ -191,19 +191,38 @@ export function DailySession({
     let cancelled = false;
 
     (async () => {
-      for (let i = 0; i < steps.length; i++) {
-        if (cancelled || id !== runId.current) return;
+      const stop = () => cancelled || id !== runId.current;
+      // 1) La démonstration : l'enseignant montre et explique.
+      for (let i = 0; i < steps.length - 1; i++) {
+        if (stop()) return;
         setStepIndex(i);
         const s = steps[i] as Step;
         await say(s.say, s.pose ?? "point");
-        if (cancelled || id !== runId.current) return;
-        if (i < steps.length - 1) await pause(1100);
+        if (stop()) return;
+        await pause(400);
       }
-      if (cancelled || id !== runId.current) return;
-      // L'oreille s'ouvre toute seule : l'apprenant n'a qu'à parler.
+      // 2) Mini-quiz oral : est-ce que la consigne est comprise ?
+      if (!stop() && canListen()) {
+        const understood = await askQuiz();
+        if (stop()) return;
+        if (understood === false) {
+          // On adapte : on remontre le moment clé, plus lentement.
+          const key = steps[Math.max(0, steps.length - 2)] as Step;
+          setStepIndex(Math.max(0, steps.length - 2));
+          await say(`Pas de problème. Regarde encore. ${key.say}`, "point");
+          if (stop()) return;
+          await pause(400);
+        }
+      }
+      // 3) La consigne finale, puis l'oreille s'ouvre toute seule.
+      if (stop()) return;
+      setStepIndex(steps.length - 1);
+      const last = steps[steps.length - 1] as Step;
+      await say(last.say, last.pose ?? "listen");
+      if (stop()) return;
       if (activity.kind !== "write" && canListen()) {
-        await pause(500);
-        if (cancelled || id !== runId.current) return;
+        await pause(250);
+        if (stop()) return;
         await answerBySpeech();
       }
     })();
@@ -221,7 +240,7 @@ export function DailySession({
     setProfile(next);
   }
 
-  async function judge(ok: boolean) {
+  async function judge(ok: boolean, score = 1) {
     runId.current++; // stoppe la démonstration en cours
     const updated = recordAnswer(profile, activity.id, ok);
     persist(updated);
@@ -232,7 +251,7 @@ export function DailySession({
       : `Ça va aller. Écoute bien. C'est... ${expectedSpoken(activity)}. Maintenant, dis... ${expectedSpoken(activity)}.`;
     await say(msg, ok ? "happy" : "point");
     if (!ok) {
-      await pause(900);
+      await pause(400);
       if (!alive.current) return;
       setFeedback(null);
       setStepIndex(steps.length - 1);
@@ -240,6 +259,8 @@ export function DailySession({
       await answerBySpeech();
       return;
     }
+    if (ok) await refinePronunciation(score);
+    if (!alive.current) return;
     goNext(updated);
   }
 
@@ -271,7 +292,22 @@ export function DailySession({
     persist({ ...base, activityIndex: index + 1, pendingSync: true });
   }
 
-  async function answerBySpeech() {
+  /** Mini-quiz oral après la consigne : « tu as compris ? oui ou non » */
+  async function askQuiz(): Promise<boolean | null> {
+    await say("Dis-moi : est-ce que tu as compris ? Réponds oui, ou non.", "listen");
+    setListening(true);
+    setPose("listen");
+    const heard = await listenOnce(7000);
+    setListening(false);
+    if (!alive.current) return null;
+    const t = normalize(heard.text + " " + heard.alternatives.join(" "));
+    if (/\b(non|no|pas)\b/.test(t)) return false;
+    if (/\b(oui|ouais|voila|dacord|daccord|ok|hm)\b/.test(t) || heard.voiced) return true;
+    return null;
+  }
+
+  /** Écoute la réponse, avec relance douce quand l'apprenant hésite. */
+  async function answerBySpeech(tries = 0) {
     stopSpeaking();
     setSpeaking(false);
     setListening(true);
@@ -280,11 +316,34 @@ export function DailySession({
     if (!alive.current) return;
     setListening(false);
     if (!said.text.trim()) {
-      await say(`Ce n'est pas grave. Écoute : ${expectedSpoken(activity)}. À toi maintenant.`, "listen");
-      if (alive.current) await answerBySpeech();
+      // Relance automatique : une pause de plus, puis une répétition courte
+      // exactement au même moment pédagogique.
+      await pause(700);
+      if (!alive.current) return;
+      const short = `${expectedSpoken(activity)}. À toi.`;
+      await say(tries === 0 ? `Je t'écoute. Écoute encore : ${short}` : `Doucement. ${short}`, "listen");
+      if (alive.current) await answerBySpeech(tries + 1);
       return;
     }
     check(said);
+  }
+
+  /** Prononciation guidée : on refait dire uniquement ce qui est difficile. */
+  async function refinePronunciation(score: number) {
+    if (score >= 0.75 || !canListen()) return;
+    await say(`On le dit encore une fois, bien fort : ${expectedSpoken(activity)}.`, "listen");
+    if (!alive.current) return;
+    setListening(true);
+    const again = await listenOnce(9000);
+    setListening(false);
+    if (!alive.current) return;
+    const next = bestScore(expectedSpoken(activity), again);
+    await say(
+      next > score
+        ? "Voilà ! C'est beaucoup mieux. Ta bouche a bien travaillé."
+        : `Ça va aller. Écoute-moi : ${expectedSpoken(activity)}. On avance, tu vas y arriver.`,
+      next > score ? "happy" : "point",
+    );
   }
 
   function check(said: HeardResult) {
@@ -293,7 +352,8 @@ export function DailySession({
       void judge(value !== null && value === activity.answer);
       return;
     }
-    void judge(bestScore(expectedSpoken(activity), said) >= 0.42);
+    const score = bestScore(expectedSpoken(activity), said);
+    void judge(score >= 0.42, score);
   }
 
   return (
@@ -344,7 +404,7 @@ export function DailySession({
         <div className="space-y-3">
           {canListen() ? (
             <button
-              onClick={answerBySpeech}
+              onClick={() => void answerBySpeech()}
               className="w-full rounded-3xl bg-primary px-6 py-8 text-2xl font-bold text-primary-foreground shadow-warm"
             >
               {listening ? "🎙️ Je t'écoute…" : "👄 À moi de parler"}

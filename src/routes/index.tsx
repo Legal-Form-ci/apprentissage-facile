@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
 import { Onboarding } from "@/components/Onboarding";
+import { ClarityButton } from "@/components/ClarityButton";
 import { DailySession } from "@/components/DailySession";
 import { speak } from "@/lib/speech";
 import { exportProfile, fromRecoveryCode, importProfileFile, toRecoveryCode } from "@/lib/backup";
@@ -217,6 +218,8 @@ function App() {
             </p>
           ) : null}
         </div>
+
+        <ClarityButton />
 
         <Tools profile={profile} onRestore={(p) => { setProfile(p); setView("home"); }} />
 
