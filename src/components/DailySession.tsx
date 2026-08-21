@@ -353,7 +353,7 @@ export function DailySession({
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              if (typed.trim()) check(typed);
+              if (typed.trim()) check({ text: typed, alternatives: [], voiced: true });
             }}
             className="flex gap-2"
           >
