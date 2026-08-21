@@ -191,19 +191,38 @@ export function DailySession({
     let cancelled = false;
 
     (async () => {
-      for (let i = 0; i < steps.length; i++) {
-        if (cancelled || id !== runId.current) return;
+      const stop = () => cancelled || id !== runId.current;
+      // 1) La démonstration : l'enseignant montre et explique.
+      for (let i = 0; i < steps.length - 1; i++) {
+        if (stop()) return;
         setStepIndex(i);
         const s = steps[i] as Step;
         await say(s.say, s.pose ?? "point");
-        if (cancelled || id !== runId.current) return;
-        if (i < steps.length - 1) await pause(400);
+        if (stop()) return;
+        await pause(400);
       }
-      if (cancelled || id !== runId.current) return;
-      // L'oreille s'ouvre toute seule : l'apprenant n'a qu'à parler.
+      // 2) Mini-quiz oral : est-ce que la consigne est comprise ?
+      if (!stop() && canListen()) {
+        const understood = await askQuiz();
+        if (stop()) return;
+        if (understood === false) {
+          // On adapte : on remontre le moment clé, plus lentement.
+          const key = steps[Math.max(0, steps.length - 2)] as Step;
+          setStepIndex(Math.max(0, steps.length - 2));
+          await say(`Pas de problème. Regarde encore. ${key.say}`, "point");
+          if (stop()) return;
+          await pause(400);
+        }
+      }
+      // 3) La consigne finale, puis l'oreille s'ouvre toute seule.
+      if (stop()) return;
+      setStepIndex(steps.length - 1);
+      const last = steps[steps.length - 1] as Step;
+      await say(last.say, last.pose ?? "listen");
+      if (stop()) return;
       if (activity.kind !== "write" && canListen()) {
         await pause(250);
-        if (cancelled || id !== runId.current) return;
+        if (stop()) return;
         await answerBySpeech();
       }
     })();
