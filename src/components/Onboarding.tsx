@@ -50,7 +50,8 @@ export function Onboarding({ onReady }: { onReady: (p: Profile) => void }) {
       await say(questionFor(current, profile.name));
       if (!alive.current) return;
       setListening(true);
-      const heard = canListen() ? await listenOnce(10000) : "";
+      const result = canListen() ? await listenOnce(10000) : null;
+      const heard = result?.text ?? "";
       setListening(false);
       if (!heard.trim()) {
         await say("Ce n'est pas grave. Je remets mon oreille. Parle maintenant, doucement.");
