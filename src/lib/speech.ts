@@ -1,6 +1,7 @@
 // Moteur vocal : voix de l'enseignant (TTS) + écoute de l'apprenant (STT)
 import { speakServer } from "./tts.functions";
 import { articulate, getClarity } from "./clarity";
+import { voiceThreshold } from "./noise";
 
 export function canSpeak() {
   return typeof window !== "undefined" && "speechSynthesis" in window;
@@ -234,7 +235,7 @@ export function listenOnce(timeoutMs = 9000): Promise<HeardResult> {
     const alts = new Set<string>();
 
     const levelWatch = window.setInterval(() => {
-      if (micLevel() > 0.12) voiced = true;
+      if (micLevel() > voiceThreshold()) voiced = true;
     }, 120);
 
     const finish = (value: string) => {
