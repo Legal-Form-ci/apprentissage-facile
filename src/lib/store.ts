@@ -36,6 +36,10 @@ export type Profile = {
   sessions: SessionRecord[];
   certificates: Array<{ level: number; date: string }>;
   pendingSync: boolean;
+  /** reprise exacte : le dernier exercice ouvert */
+  lastActivityId: string;
+  /** meilleur score obtenu par compétence (0..1) */
+  bestScores: Record<string, number>;
 };
 
 const STATES: SkillState[] = [
@@ -63,6 +67,8 @@ export function emptyProfile(): Profile {
     pendingSync: false,
     level: 1,
     onboardingComplete: false,
+    lastActivityId: "",
+    bestScores: {},
   };
 }
 
@@ -73,7 +79,12 @@ export function loadProfile(): Profile | null {
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Profile;
     if (!parsed?.id) return null;
-    return { ...emptyProfile(), ...parsed };
+    const merged = { ...emptyProfile(), ...parsed };
+    merged.bestScores = merged.bestScores ?? {};
+    merged.sessions = merged.sessions ?? [];
+    merged.certificates = merged.certificates ?? [];
+    merged.skills = merged.skills ?? {};
+    return merged;
   } catch {
     return null;
   }
@@ -96,13 +107,13 @@ export function resetProfile() {
   }
 }
 
-/** Six niveaux progressifs, de l'oral jusqu'à la rédaction autonome. */
+/** Cinq niveaux progressifs, de l'oral jusqu'à la rédaction autonome. */
 export function learningLevel(day: number) {
-  return Math.min(6, Math.max(1, Math.ceil(day / 30)));
+  return Math.min(5, Math.max(1, Math.ceil(day / 30)));
 }
 
 /** Met à jour l'état de maîtrise d'une compétence après une réponse. */
-export function recordAnswer(profile: Profile, skillId: string, ok: boolean): Profile {
+export function recordAnswer(profile: Profile, skillId: string, ok: boolean, score = ok ? 1 : 0): Profile {
   const prev: SkillRecord =
     profile.skills[skillId] ??
     { id: skillId, state: "non_apprise", success: 0, fail: 0, lastSeen: "" };
@@ -120,10 +131,17 @@ export function recordAnswer(profile: Profile, skillId: string, ok: boolean): Pr
     lastSeen: new Date().toISOString(),
   };
 
+  const bestScores = {
+    ...profile.bestScores,
+    [skillId]: Math.max(profile.bestScores?.[skillId] ?? 0, score),
+  };
+
   return {
     ...profile,
     stars: profile.stars + (ok ? 1 : 0),
     skills: { ...profile.skills, [skillId]: next },
+    bestScores,
+    lastActivityId: skillId,
     pendingSync: true,
   };
 }

@@ -52,21 +52,20 @@ export async function think(args: {
     const res = await tutorTurn({
       data: {
         said,
-        expected: args.expected,
-        situation: args.situation,
-        learner: args.learner,
+        ...(args.expected ? { expected: args.expected } : {}),
+        ...(args.situation ? { situation: args.situation } : {}),
+        ...(args.learner ? { learner: args.learner } : {}),
         memory: memorySummary().slice(0, 1800),
       },
     });
-    if (res?.ok && res.turn) {
-      const t = res.turn as Record<string, unknown>;
+    if (res?.ok) {
       const reply: TutorReply = {
-        intent: (String(t["intent"] ?? "reponse") as Intent) ?? "reponse",
-        correct: typeof t["correct"] === "boolean" ? (t["correct"] as boolean) : null,
-        reply: String(t["reply"] ?? ""),
-        mood: String(t["mood"] ?? "neutre"),
-        note: String(t["note"] ?? ""),
-        next: (String(t["next"] ?? "continuer") as TutorReply["next"]) ?? "continuer",
+        intent: (res.intent as Intent) ?? "reponse",
+        correct: res.correct,
+        reply: res.reply,
+        mood: res.mood,
+        note: res.note,
+        next: (res.next as TutorReply["next"]) ?? "continuer",
       };
       if (reply.note) remember("note", reply.note);
       if (reply.mood) rememberMood(reply.mood);
@@ -82,7 +81,7 @@ export async function think(args: {
     correct: null,
     reply:
       intent === "repeter"
-        ? "Pas de problème, j'écoute-moi bien, je répète."
+        ? "Pas de problème, écoute-moi bien, je répète."
         : intent === "reprendre"
           ? "D'accord, on reprend tranquillement. On repart du début de cet exercice."
           : intent === "pause"
