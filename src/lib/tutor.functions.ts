@@ -15,6 +15,21 @@ const SYSTEM = [
   '{"intent":"reponse|repeter|reprendre|pause|question|emotion|hors_sujet","correct":true|false|null,"reply":"ce que tu dis à voix haute (1 à 3 phrases)","mood":"joie|calme|triste|fatigue|fier|neutre","note":"ce qu\'il faut retenir de l\'apprenant","next":"continuer|refaire|revenir_debut|arreter"}',
 ].join(" ");
 
+export type TutorTurnResult = {
+  ok: boolean;
+  reason: string;
+  intent: string;
+  correct: boolean | null;
+  reply: string;
+  mood: string;
+  note: string;
+  next: string;
+};
+
+function fail(reason: string): TutorTurnResult {
+  return { ok: false, reason, intent: "reponse", correct: null, reply: "", mood: "neutre", note: "", next: "continuer" };
+}
+
 export const tutorTurn = createServerFn({ method: "POST" })
   .inputValidator((data) =>
     z
@@ -27,9 +42,9 @@ export const tutorTurn = createServerFn({ method: "POST" })
       })
       .parse(data),
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data }): Promise<TutorTurnResult> => {
     const apiKey = process.env["LOVABLE_API_KEY"];
-    if (!apiKey) return { ok: false as const, reason: "no_key" };
+    if (!apiKey) return fail("no_key");
 
     const input = [
       data.learner ? `Apprenant : ${data.learner}.` : "",
@@ -56,7 +71,7 @@ export const tutorTurn = createServerFn({ method: "POST" })
     if (!res.ok) {
       const body = await res.text().catch(() => "");
       console.error(`tutorTurn gateway ${res.status}: ${body}`);
-      return { ok: false as const, reason: `status_${res.status}`, status: res.status };
+      return fail(`status_${res.status}`);
     }
 
     const json = (await res.json()) as {
@@ -69,11 +84,20 @@ export const tutorTurn = createServerFn({ method: "POST" })
       "";
 
     const match = text.match(/\{[\s\S]*\}/);
-    if (!match) return { ok: false as const, reason: "no_json" };
+    if (!match) return fail("no_json");
     try {
       const parsed = JSON.parse(match[0]) as Record<string, unknown>;
-      return { ok: true as const, turn: parsed };
+      return {
+        ok: true,
+        reason: "",
+        intent: String(parsed["intent"] ?? "reponse"),
+        correct: typeof parsed["correct"] === "boolean" ? (parsed["correct"] as boolean) : null,
+        reply: String(parsed["reply"] ?? ""),
+        mood: String(parsed["mood"] ?? "neutre"),
+        note: String(parsed["note"] ?? ""),
+        next: String(parsed["next"] ?? "continuer"),
+      };
     } catch {
-      return { ok: false as const, reason: "bad_json" };
+      return fail("bad_json");
     }
   });
