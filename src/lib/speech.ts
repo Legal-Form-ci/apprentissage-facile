@@ -217,11 +217,12 @@ export type HeardResult = {
 };
 
 /**
- * Écoute une réponse courte. Robuste : reste ouverte, relance
- * automatiquement la reconnaissance quand elle se ferme trop vite,
- * et signale si l'apprenant a parlé même sans être compris.
+ * Écoute patiente : dès que l'enseignant a fini de parler, l'oreille s'ouvre
+ * et RESTE ouverte, sans clignoter. Elle attend tranquillement qu'une voix
+ * vienne la réveiller (jusqu'à `maxMs`, une minute par défaut). Les coupures
+ * de la reconnaissance sont relancées en silence, sans rien déranger.
  */
-export function listenOnce(timeoutMs = 9000): Promise<HeardResult> {
+export function listenOnce(maxMs = 60000): Promise<HeardResult> {
   const empty: HeardResult = { text: "", alternatives: [], voiced: false };
   if (!canListen()) return Promise.resolve(empty);
   const w = window as any;
@@ -231,17 +232,26 @@ export function listenOnce(timeoutMs = 9000): Promise<HeardResult> {
     let done = false;
     let voiced = false;
     let rec: Recognition | null = null;
-    const deadline = Date.now() + timeoutMs;
+    let lastVoiceAt = 0;
     const alts = new Set<string>();
+    const deadline = Date.now() + maxMs;
 
     const levelWatch = window.setInterval(() => {
-      if (micLevel() > voiceThreshold()) voiced = true;
-    }, 120);
+      if (micLevel() > voiceThreshold()) {
+        voiced = true;
+        lastVoiceAt = Date.now();
+      }
+      // La voix s'est arrêtée depuis un moment : on rend ce qu'on a compris.
+      if (!done && lastVoiceAt && Date.now() - lastVoiceAt > 1600 && alts.size > 0) {
+        finish([...alts][0] ?? "");
+      }
+    }, 150);
 
     const finish = (value: string) => {
       if (done) return;
       done = true;
       window.clearInterval(levelWatch);
+      window.clearTimeout(hardStop);
       try {
         rec?.abort();
       } catch {
@@ -255,11 +265,13 @@ export function listenOnce(timeoutMs = 9000): Promise<HeardResult> {
       if (Date.now() >= deadline) return finish([...alts][0] ?? "");
       rec = new Ctor() as Recognition;
       rec.lang = "fr-FR";
-      rec.continuous = false;
+      // continu : on n'arrête pas l'oreille au premier silence
+      rec.continuous = true;
       rec.interimResults = true;
       rec.maxAlternatives = 5;
       rec.onspeechstart = () => {
         voiced = true;
+        lastVoiceAt = Date.now();
       };
       rec.onresult = (e: any) => {
         const results = e?.results ?? [];
@@ -271,32 +283,35 @@ export function listenOnce(timeoutMs = 9000): Promise<HeardResult> {
             if (t) alts.add(t);
           }
           if (r?.isFinal) final = String(r[0]?.transcript ?? "").trim();
-          if (r && !r.isFinal) voiced = true;
+          voiced = true;
+          lastVoiceAt = Date.now();
         }
         if (final) finish(final);
       };
       rec.onerror = (e: any) => {
         const err = String(e?.error ?? "");
         if (err === "not-allowed" || err === "service-not-allowed") return finish("");
-        // no-speech / aborted / network : on relance, on n'abandonne pas
+        // no-speech / aborted / network : on relance en silence, sans abandonner
       };
       rec.onend = () => {
         if (done) return;
         const best = [...alts][0];
         if (best) return finish(best);
-        window.setTimeout(start, 120);
+        // Relance discrète : l'apprenant ne voit rien changer.
+        window.setTimeout(start, 200);
       };
       try {
         rec.start();
       } catch {
-        window.setTimeout(start, 250);
+        window.setTimeout(start, 300);
       }
     };
 
+    const hardStop = window.setTimeout(() => finish([...alts][0] ?? ""), maxMs);
     void primeMic().then(start);
-    window.setTimeout(() => finish([...alts][0] ?? ""), timeoutMs);
   });
 }
+
 
 export function normalize(text: string) {
   return text
