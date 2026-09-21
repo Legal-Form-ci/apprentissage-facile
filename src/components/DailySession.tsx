@@ -1,9 +1,22 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Classroom, type Pose } from "./Classroom";
 import { GuidedWriting } from "./GuidedWriting";
-import { bestScore, canListen, listenOnce, normalize, playEncouragement, speak, stopSpeaking, type HeardResult } from "@/lib/speech";
-import { buildLesson, PRAISE, RETRY, type Activity } from "@/lib/curriculum";
+import {
+  bestScore,
+  canListen,
+  listenOnce,
+  matchScore,
+  normalize,
+  playEncouragement,
+  speak,
+  stopSpeaking,
+  type HeardResult,
+} from "@/lib/speech";
+import { buildLesson, levelOf, PRAISE, type Activity } from "@/lib/curriculum";
 import { ALPHABET, strokeAdvice } from "@/lib/letters";
+import { startNoiseWatch, stopNoiseWatch } from "@/lib/noise";
+import { hardestSkills, remember } from "@/lib/memory";
+import { think } from "@/lib/tutor";
 import { recordAnswer, saveProfile, type Profile } from "@/lib/store";
 
 const NUMBER_WORDS: Record<string, number> = {
@@ -37,44 +50,34 @@ function stepsFor(a: Activity): Step[] {
         {
           say: `Regarde bien le tableau. Ici, tu vois le son... ${a.sound}.`,
           show: a.upper,
-          sub: `la grande lettre ${a.sound}`,
           tap: true,
         },
         {
           say: `Ici, c'est la petite forme. Elle fait aussi... ${a.sound}.`,
           show: a.lower,
-          sub: `la petite lettre ${a.sound}`,
           tap: true,
         },
         {
           say: `La grande et la petite font le même son... ${a.sound}. ${a.example}.`,
           show: `${a.upper} ${a.lower}`,
-          sub: a.example,
           tap: true,
         },
         {
           say: `Maintenant, à toi. Dis avec moi : ${a.sound}.`,
           show: `${a.upper} ${a.lower}`,
-          sub: `répète : ${a.sound}`,
           pose: "listen",
         },
       ];
     case "syllable":
       return [
-        { say: `Écoute. Ici j'ai ${a.parts[0]}.`, show: a.parts[0], tap: true },
-        { say: `Et ici j'ai ${a.parts[1]}.`, show: a.parts[1], tap: true },
+        { say: `Écoute. Ici j'ai ${soundForPart(a.parts[0])}.`, show: a.parts[0], tap: true },
+        { say: `Et ici j'ai ${soundForPart(a.parts[1])}.`, show: a.parts[1], tap: true },
         {
-          say: `${soundForPart(a.parts[0])}... ${soundForPart(a.parts[1])}... ${a.syllable}. Encore. ${soundForPart(a.parts[0])}... ${soundForPart(a.parts[1])}... ${a.syllable}.`,
+          say: `${soundForPart(a.parts[0])}... ${soundForPart(a.parts[1])}... ${a.syllable}.`,
           show: `${a.parts[0]} + ${a.parts[1]} = ${a.syllable}`,
-          sub: "on colle les morceaux",
           tap: true,
         },
-        {
-          say: `À toi. Lis tout seul : ${a.syllable}.`,
-          show: a.syllable,
-          sub: `lis : ${a.syllable}`,
-          pose: "listen",
-        },
+        { say: `À toi. Lis tout seul : ${a.syllable}.`, show: a.syllable, pose: "listen" },
       ];
     case "word":
       return [
@@ -83,48 +86,64 @@ function stepsFor(a: Activity): Step[] {
           show: a.pieces.join(" + "),
           tap: true,
         },
+        { say: `Tout ensemble, ça fait ${a.word}. C'est ${a.hint}.`, show: a.word, tap: true },
+        { say: `À toi. Lis le mot : ${a.word}.`, show: a.word, pose: "listen" },
+      ];
+    case "read":
+      return [
         {
-          say: `Tout ensemble, ça fait ${a.word}. C'est ${a.hint}.`,
-          show: a.word,
-          sub: a.hint,
+          say: "Regarde bien le tableau. Il y a quelque chose à lire aujourd'hui.",
+          show: a.text,
           tap: true,
         },
-        { say: `À toi. Lis le mot : ${a.word}.`, show: a.word, sub: `lis : ${a.word}`, pose: "listen" },
+        {
+          say: `À toi maintenant : ${a.hint}. Je t'écoute et je te donne une note.`,
+          show: a.text,
+          pose: "listen",
+        },
+      ];
+    case "dictation":
+      return [
+        {
+          say: "On va faire une dictée. Écoute bien, je ne montre rien au tableau.",
+          show: "✍️",
+          tap: true,
+        },
+        {
+          say: `Écris ce que je dis. ${a.text}. Je répète : ${a.text}. Tu as le temps, écris, puis touche « J'ai fini ».`,
+          show: "✍️",
+          pose: "listen",
+        },
       ];
     case "write":
       return [
         {
           say: `Maintenant on écrit ${a.target}. Regarde le trait vert : ${strokeAdvice(a.target)}`,
           show: a.target,
-          sub: "regarde le sens du trait",
           tap: true,
         },
         {
           say: "À toi. Écris avec ton doigt, doucement, comme moi.",
           show: a.target,
-          sub: "écris avec ton doigt",
           pose: "listen",
         },
       ];
     case "count":
       return [
-        {
-          say: "Comptons ensemble les choses sur le tableau.",
-          show: "🟠".repeat(a.answer),
-          tap: true,
-        },
+        { say: "Comptons ensemble les choses sur le tableau.", show: "🟠".repeat(a.answer), tap: true },
         {
           say: "Alors, combien de choses vois-tu ? Dis le nombre.",
           show: "🟠".repeat(a.answer),
-          sub: "dis le nombre",
           pose: "listen",
         },
       ];
     case "money":
       return [
         { say: "Écoute bien cette histoire d'argent.", show: "💰", tap: true },
-        { say: a.question, show: "💰", sub: a.question, pose: "listen" },
+        { say: a.question, show: "💰", pose: "listen" },
       ];
+    default:
+      return [{ say: "On continue.", show: "•", pose: "listen" }];
   }
 }
 
@@ -133,9 +152,12 @@ function expectedSpoken(a: Activity): string {
     case "letter": return a.sound;
     case "syllable": return a.syllable;
     case "word": return a.word;
+    case "read": return a.text;
+    case "dictation": return a.text;
     case "write": return a.target;
     case "count": return String(a.answer);
     case "money": return String(a.answer);
+    default: return "";
   }
 }
 
@@ -148,7 +170,8 @@ export function DailySession({
   setProfile: (p: Profile) => void;
   onFinish: () => void;
 }) {
-  const lesson = buildLesson(profile.day);
+  const level = levelOf(profile.day);
+  const lesson = buildLesson(profile.day, hardestSkills(3));
   const index = Math.min(Math.max(0, profile.activityIndex), lesson.activities.length - 1);
   const activity = lesson.activities[index] as Activity;
   const steps = stepsFor(activity);
@@ -158,13 +181,17 @@ export function DailySession({
   const [listening, setListening] = useState(false);
   const [feedback, setFeedback] = useState<"ok" | "retry" | null>(null);
   const [typed, setTyped] = useState("");
+  const [heardText, setHeardText] = useState("");
   const [pose, setPose] = useState<Pose>("point");
   const [line, setLine] = useState(steps[0]?.say ?? "");
+  const [left, setLeft] = useState<number | null>(null);
+  const [locked, setLocked] = useState(false);
   const alive = useRef(true);
   const runId = useRef(0);
 
   const step = steps[Math.min(stepIndex, steps.length - 1)] as Step;
   const isAnswerStep = stepIndex >= steps.length - 1;
+  const isDictation = activity.kind === "dictation";
 
   const say = useCallback(async (text: string, p: Pose = "point") => {
     setLine(text);
@@ -176,11 +203,31 @@ export function DailySession({
 
   useEffect(() => {
     alive.current = true;
+    // Surveillance automatique du bruit pendant toute la séance
+    startNoiseWatch();
     return () => {
       alive.current = false;
+      stopNoiseWatch();
       stopSpeaking();
     };
   }, []);
+
+  // Compte à rebours de la dictée : à zéro, le champ se grise.
+  useEffect(() => {
+    if (left === null) return;
+    if (left <= 0) {
+      setLocked(true);
+      return;
+    }
+    const t = setTimeout(() => setLeft((v) => (v === null ? null : v - 1)), 1000);
+    return () => clearTimeout(t);
+  }, [left]);
+
+  // Correction automatique dès que le temps est écoulé
+  useEffect(() => {
+    if (locked && isDictation) void gradeDictation(typed);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [locked]);
 
   // Enchaînement automatique : l'enseignant parle, montre, tape, puis passe.
   useEffect(() => {
@@ -188,11 +235,13 @@ export function DailySession({
     setStepIndex(0);
     setFeedback(null);
     setTyped("");
+    setHeardText("");
+    setLeft(null);
+    setLocked(false);
     let cancelled = false;
 
     (async () => {
       const stop = () => cancelled || id !== runId.current;
-      // 1) La démonstration : l'enseignant montre et explique.
       for (let i = 0; i < steps.length - 1; i++) {
         if (stop()) return;
         setStepIndex(i);
@@ -201,32 +250,21 @@ export function DailySession({
         if (stop()) return;
         await pause(400);
       }
-      // 2) Mini-quiz oral : est-ce que la consigne est comprise ?
-      if (!stop() && canListen()) {
-        const understood = await askQuiz();
-        if (stop()) return;
-        if (understood === false) {
-          // On adapte : on remontre le moment clé, plus lentement.
-          const key = steps[Math.max(0, steps.length - 2)] as Step;
-          setStepIndex(Math.max(0, steps.length - 2));
-          await say(`Pas de problème. Regarde encore. ${key.say}`, "point");
-          if (stop()) return;
-          await pause(400);
-        }
-      }
-      // 3) La consigne finale, puis l'oreille s'ouvre toute seule.
       if (stop()) return;
       setStepIndex(steps.length - 1);
       const last = steps[steps.length - 1] as Step;
       await say(last.say, last.pose ?? "listen");
       if (stop()) return;
+      if (isDictation) {
+        setLeft(activity.kind === "dictation" ? activity.seconds : 60);
+        return;
+      }
       if (activity.kind !== "write" && canListen()) {
         await pause(250);
         if (stop()) return;
         await answerBySpeech();
       }
     })();
-
 
     return () => {
       cancelled = true;
@@ -240,12 +278,18 @@ export function DailySession({
     setProfile(next);
   }
 
-  async function judge(ok: boolean, score = 1) {
+  async function judge(ok: boolean, score = ok ? 1 : 0) {
     runId.current++; // stoppe la démonstration en cours
-    const updated = recordAnswer(profile, activity.id, ok);
+    const updated = recordAnswer(profile, activity.id, ok, score);
     persist(updated);
     setFeedback(ok ? "ok" : "retry");
     playEncouragement(ok);
+    if (ok) {
+      remember("reussite", `${activity.id} réussi`);
+    } else {
+      // mémorisation des sons difficiles pour la révision automatique
+      remember("echec", `${activity.id} difficile`, `difficile:${activity.id}`);
+    }
     const msg = ok
       ? (PRAISE[Math.floor(Math.random() * PRAISE.length)] as string)
       : `Ça va aller. Écoute bien. C'est... ${expectedSpoken(activity)}. Maintenant, dis... ${expectedSpoken(activity)}.`;
@@ -256,12 +300,40 @@ export function DailySession({
       setFeedback(null);
       setStepIndex(steps.length - 1);
       await say(steps[steps.length - 1]?.say ?? "", "listen");
-      await answerBySpeech();
+      if (canListen() && !isDictation) await answerBySpeech();
       return;
     }
-    if (ok) await refinePronunciation(score);
+    if (activity.kind !== "read" && activity.kind !== "dictation") await refinePronunciation(score);
     if (!alive.current) return;
     goNext(updated);
+  }
+
+  /** Note verbale sur 10 : l'enseignant donne une note et encourage. */
+  async function gradeOutOfTen(score: number) {
+    const note = Math.max(0, Math.min(10, Math.round(score * 10)));
+    const updated = recordAnswer(profile, activity.id, note >= 5, score);
+    persist(updated);
+    playEncouragement(note >= 5);
+    setFeedback(note >= 5 ? "ok" : "retry");
+    if (note < 5) remember("echec", `${activity.id} difficile`, `difficile:${activity.id}`);
+    await say(
+      note >= 8
+        ? `Excellent ! Je te donne ${note} sur 10. Tu lis bien maintenant.`
+        : note >= 5
+          ? `C'est bien. Je te mets ${note} sur 10. Encore un petit effort et c'est parfait.`
+          : `Je te mets ${note} sur 10. Ce n'est pas grave du tout, on va y arriver ensemble. Écoute-moi : ${expectedSpoken(activity)}.`,
+      note >= 5 ? "happy" : "point",
+    );
+    if (!alive.current) return;
+    goNext(updated);
+  }
+
+  async function gradeDictation(written: string) {
+    runId.current++;
+    const score = matchScore(expectedSpoken(activity), written);
+    await say("Le temps est fini. Je regarde ton écriture.", "point");
+    if (!alive.current) return;
+    await gradeOutOfTen(score);
   }
 
   function goNext(base: Profile) {
@@ -289,21 +361,7 @@ export function DailySession({
       return;
     }
     // reprise exacte : l'avancement est enregistré tout de suite sur le téléphone
-    persist({ ...base, activityIndex: index + 1, pendingSync: true });
-  }
-
-  /** Mini-quiz oral après la consigne : « tu as compris ? oui ou non » */
-  async function askQuiz(): Promise<boolean | null> {
-    await say("Dis-moi : est-ce que tu as compris ? Réponds oui, ou non.", "listen");
-    setListening(true);
-    setPose("listen");
-    const heard = await listenOnce(7000);
-    setListening(false);
-    if (!alive.current) return null;
-    const t = normalize(heard.text + " " + heard.alternatives.join(" "));
-    if (/\b(non|no|pas)\b/.test(t)) return false;
-    if (/\b(oui|ouais|voila|dacord|daccord|ok|hm)\b/.test(t) || heard.voiced) return true;
-    return null;
+    persist({ ...base, activityIndex: index + 1, lastActivityId: activity.id, pendingSync: true });
   }
 
   /** Écoute la réponse, avec relance douce quand l'apprenant hésite. */
@@ -312,12 +370,11 @@ export function DailySession({
     setSpeaking(false);
     setListening(true);
     setPose("listen");
-    const said = await listenOnce(13000);
+    const said = await listenOnce(60000);
     if (!alive.current) return;
     setListening(false);
+    setHeardText([said.text, ...said.alternatives].filter(Boolean).join(" · "));
     if (!said.text.trim()) {
-      // Relance automatique : une pause de plus, puis une répétition courte
-      // exactement au même moment pédagogique.
       await pause(700);
       if (!alive.current) return;
       const short = `${expectedSpoken(activity)}. À toi.`;
@@ -325,7 +382,7 @@ export function DailySession({
       if (alive.current) await answerBySpeech(tries + 1);
       return;
     }
-    check(said);
+    await check(said);
   }
 
   /** Prononciation guidée : on refait dire uniquement ce qui est difficile. */
@@ -334,9 +391,10 @@ export function DailySession({
     await say(`On le dit encore une fois, bien fort : ${expectedSpoken(activity)}.`, "listen");
     if (!alive.current) return;
     setListening(true);
-    const again = await listenOnce(9000);
+    const again = await listenOnce(30000);
     setListening(false);
     if (!alive.current) return;
+    setHeardText([again.text, ...again.alternatives].filter(Boolean).join(" · "));
     const next = bestScore(expectedSpoken(activity), again);
     await say(
       next > score
@@ -346,22 +404,67 @@ export function DailySession({
     );
   }
 
-  function check(said: HeardResult) {
+  async function check(said: HeardResult) {
     if (activity.kind === "count" || activity.kind === "money") {
       const value = parseNumber(said.text);
-      void judge(value !== null && value === activity.answer);
+      if (value !== null && value === activity.answer) {
+        await judge(true, 1);
+        return;
+      }
+      await reactOrJudge(said, 0);
       return;
     }
     const score = bestScore(expectedSpoken(activity), said);
-    void judge(score >= 0.42, score);
+    // Lecture : note verbale sur 10 au lieu d'un simple juste/faux
+    if (activity.kind === "read") {
+      await gradeOutOfTen(score);
+      return;
+    }
+    if (score >= 0.42) {
+      await judge(true, score);
+      return;
+    }
+    await reactOrJudge(said, score);
+  }
+
+  /**
+   * Quand la réponse n'est pas celle attendue, l'enseignant réfléchit :
+   * demande de répéter, de reprendre, une émotion, une pause…
+   */
+  async function reactOrJudge(said: HeardResult, score: number) {
+    const reply = await think({
+      heard: said,
+      expected: expectedSpoken(activity),
+      situation: `Exercice ${activity.kind} du jour ${lesson.day}`,
+      ...(profile.name ? { learner: profile.name } : {}),
+    });
+    if (!alive.current) return;
+    if (reply && reply.intent !== "reponse") {
+      await say(reply.reply, reply.next === "continuer" ? "happy" : "point");
+      if (!alive.current) return;
+      if (reply.next === "arreter") {
+        onFinish();
+        return;
+      }
+      if (reply.next === "revenir_debut") {
+        setStepIndex(0);
+        await say(steps[0]?.say ?? "", "point");
+      } else {
+        setStepIndex(steps.length - 1);
+        await say(steps[steps.length - 1]?.say ?? "", "listen");
+      }
+      if (alive.current && canListen() && !isDictation) await answerBySpeech();
+      return;
+    }
+    await judge(false, score);
   }
 
   return (
     <div className="mx-auto w-full max-w-xl space-y-4 px-4 py-5">
       <div className="flex items-center justify-between text-sm font-semibold text-muted-foreground">
-        <span>🎯 Défi du jour {lesson.day}</span>
+        <span>🎯 Jour {lesson.day} · niveau {level}</span>
         <span>
-          Exercice {index + 1} / {lesson.activities.length}
+          {index + 1} / {lesson.activities.length}
         </span>
       </div>
       <div className="h-3 w-full overflow-hidden rounded-full bg-secondary">
@@ -382,25 +485,60 @@ export function DailySession({
         ) : (
           <div className="flex min-h-[190px] flex-col items-center justify-center gap-2">
             <p
-              className={`font-display leading-none ${
-                activity.kind === "count" ? "text-4xl" : "text-6xl"
+              className={`font-display leading-tight ${
+                activity.kind === "read"
+                  ? "text-3xl"
+                  : activity.kind === "count"
+                    ? "text-4xl"
+                    : "text-6xl"
               } ${step.tap && speaking ? "animate-pulse-soft" : ""}`}
             >
               {step.show}
             </p>
-            {step.sub ? <p className="text-lg text-white/80">{step.sub}</p> : null}
             {feedback === "ok" ? <p className="text-3xl">🎉 ⭐</p> : null}
           </div>
         )}
       </Classroom>
 
-      {/* Sous-titres : ce que l'enseignant est en train de dire */}
-      <div className="rounded-2xl bg-card p-4 shadow-warm">
-        <p className="text-xs font-bold tracking-widest text-muted-foreground">SOUS-TITRES</p>
-        <p className="mt-1 text-xl leading-snug font-semibold text-card-foreground">{line}</p>
-      </div>
+      {/* Ce que l'application a détecté : l'apprenant vérifie que c'est bien sa voix */}
+      {heardText ? (
+        <div className="rounded-2xl bg-secondary p-3" aria-live="polite">
+          <p className="text-xs font-bold tracking-widest text-secondary-foreground/70">
+            CE QUE J'AI ENTENDU
+          </p>
+          <p className="text-lg font-semibold text-secondary-foreground">{heardText}</p>
+        </div>
+      ) : null}
 
-      {activity.kind !== "write" || !isAnswerStep ? (
+      {/* Dictée : champ de saisie, compte à rebours, puis champ grisé */}
+      {isDictation && isAnswerStep ? (
+        <div className="space-y-3 rounded-2xl bg-card p-4 shadow-warm">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-bold tracking-widest text-muted-foreground">MA DICTÉE</p>
+            <p className="text-xl font-bold text-primary">
+              ⏳ {left !== null ? `${left} s` : "—"}
+            </p>
+          </div>
+          <textarea
+            value={typed}
+            onChange={(e) => setTyped(e.target.value)}
+            disabled={locked}
+            className="h-28 w-full rounded-2xl border-2 border-border bg-background p-3 text-xl disabled:opacity-60"
+          />
+          <button
+            onClick={() => {
+              setLocked(true);
+              setLeft(0);
+            }}
+            disabled={locked}
+            className="w-full rounded-3xl bg-primary px-6 py-6 text-2xl font-bold text-primary-foreground shadow-warm disabled:opacity-60"
+          >
+            ✅ J'ai fini
+          </button>
+        </div>
+      ) : null}
+
+      {!isDictation && (activity.kind !== "write" || !isAnswerStep) ? (
         <div className="space-y-3">
           {canListen() ? (
             <button
@@ -410,26 +548,29 @@ export function DailySession({
               {listening ? "🎙️ Je t'écoute…" : "👄 À moi de parler"}
             </button>
           ) : null}
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (typed.trim()) check({ text: typed, alternatives: [], voiced: true });
-            }}
-            className="flex gap-2"
-          >
-            <input
-              value={typed}
-              onChange={(e) => setTyped(e.target.value)}
-              placeholder="… ou écris ta réponse"
-              className="flex-1 rounded-2xl border-2 border-border bg-card px-4 py-4 text-xl text-card-foreground outline-none focus:border-primary"
-            />
-            <button
-              type="submit"
-              className="rounded-2xl bg-accent px-5 py-4 text-xl font-bold text-accent-foreground"
+          {/* Le clavier n'apparaît qu'à partir du niveau 3 : avant, tout est vocal. */}
+          {level >= 3 ? (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (typed.trim()) void check({ text: typed, alternatives: [], voiced: true });
+              }}
+              className="flex gap-2"
             >
-              ➜
-            </button>
-          </form>
+              <input
+                value={typed}
+                onChange={(e) => setTyped(e.target.value)}
+                placeholder="… ou écris ta réponse"
+                className="flex-1 rounded-2xl border-2 border-border bg-card px-4 py-4 text-xl text-card-foreground outline-none focus:border-primary"
+              />
+              <button
+                type="submit"
+                className="rounded-2xl bg-accent px-5 py-4 text-xl font-bold text-accent-foreground"
+              >
+                ➜
+              </button>
+            </form>
+          ) : null}
         </div>
       ) : null}
 

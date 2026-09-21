@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Onboarding } from "@/components/Onboarding";
 import { ClarityButton } from "@/components/ClarityButton";
 import { DailySession } from "@/components/DailySession";
+import { VoiceCheck } from "@/components/VoiceCheck";
 import { speak } from "@/lib/speech";
 import { exportProfile, fromRecoveryCode, importProfileFile, toRecoveryCode } from "@/lib/backup";
 import { downloadCertificate } from "@/lib/certificate";
@@ -39,7 +40,7 @@ export const Route = createFileRoute("/")({
   component: App,
 });
 
-type View = "loading" | "onboarding" | "home" | "session" | "celebrate";
+type View = "loading" | "onboarding" | "home" | "session" | "celebrate" | "voicecheck";
 
 function App() {
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -98,6 +99,15 @@ function App() {
             setView("session");
           }}
         />
+      </main>
+    );
+  }
+
+  if (view === "voicecheck") {
+    return (
+      <main className="min-h-screen bg-background">
+        <Header online={online} />
+        <VoiceCheck onDone={() => setView("home")} />
       </main>
     );
   }
@@ -183,6 +193,14 @@ function App() {
         >
           🎯 Mon défi du jour
         </button>
+
+        <button
+          onClick={() => setView("voicecheck")}
+          className="w-full rounded-3xl bg-accent px-6 py-6 text-xl font-bold text-accent-foreground shadow-warm"
+        >
+          🎙️ Vérifier mon micro
+        </button>
+
 
         <div className="grid grid-cols-2 gap-3 text-center">
           {[

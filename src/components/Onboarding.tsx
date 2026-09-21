@@ -73,7 +73,7 @@ export function Onboarding({ onReady }: { onReady: (p: Profile) => void }) {
         const reply = await think({
           heard: result,
           situation: `Inscription de l'apprenant, étape : ${current}`,
-          learner: profile.name || undefined,
+          ...(profile.name ? { learner: profile.name } : {}),
         });
         if (!alive.current) return;
         if (reply && reply.intent !== "reponse") {
@@ -158,14 +158,13 @@ export function Onboarding({ onReady }: { onReady: (p: Profile) => void }) {
           </span>
         </div>
       </Classroom>
-      <div className="rounded-2xl bg-card p-4 text-center shadow-warm" aria-live="polite">
-        <p className="text-xl leading-snug font-semibold text-card-foreground">{line}</p>
-      </div>
-      {/* Sous-titres de ce que l'application a détecté */}
-      <div className="rounded-2xl bg-secondary p-3 text-center">
-        <p className="text-xs font-bold tracking-widest text-secondary-foreground/70">CE QUE J'AI ENTENDU</p>
-        <p className="text-lg font-semibold text-secondary-foreground">{heardText || "…"}</p>
-      </div>
+      {/* Uniquement ce que l'application a détecté : pas de texte long en double */}
+      {heardText ? (
+        <div className="rounded-2xl bg-secondary p-3 text-center" aria-live="polite">
+          <p className="text-xs font-bold tracking-widest text-secondary-foreground/70">CE QUE J'AI ENTENDU</p>
+          <p className="text-lg font-semibold text-secondary-foreground">{heardText}</p>
+        </div>
+      ) : null}
       <div className="flex justify-center gap-3 text-3xl" aria-hidden="true">
         <span className={speaking ? "animate-pulse-soft" : "opacity-30"}>👨🏾‍🏫</span>
         <span>➡️</span>
