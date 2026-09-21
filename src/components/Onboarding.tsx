@@ -73,7 +73,7 @@ export function Onboarding({ onReady }: { onReady: (p: Profile) => void }) {
         const reply = await think({
           heard: result,
           situation: `Inscription de l'apprenant, étape : ${current}`,
-          learner: profile.name || undefined,
+          ...(profile.name ? { learner: profile.name } : {}),
         });
         if (!alive.current) return;
         if (reply && reply.intent !== "reponse") {
