@@ -39,7 +39,7 @@ export const Route = createFileRoute("/")({
   component: App,
 });
 
-type View = "loading" | "onboarding" | "home" | "session" | "celebrate";
+type View = "loading" | "onboarding" | "home" | "session" | "celebrate" | "voicecheck";
 
 function App() {
   const [profile, setProfile] = useState<Profile | null>(null);
