@@ -194,6 +194,14 @@ function App() {
           🎯 Mon défi du jour
         </button>
 
+        <button
+          onClick={() => setView("voicecheck")}
+          className="w-full rounded-3xl bg-accent px-6 py-6 text-xl font-bold text-accent-foreground shadow-warm"
+        >
+          🎙️ Vérifier mon micro
+        </button>
+
+
         <div className="grid grid-cols-2 gap-3 text-center">
           {[
             { icon: "🎙️", label: "Écouter" },
