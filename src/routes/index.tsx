@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Onboarding } from "@/components/Onboarding";
 import { ClarityButton } from "@/components/ClarityButton";
 import { DailySession } from "@/components/DailySession";
+import { VoiceCheck } from "@/components/VoiceCheck";
 import { speak } from "@/lib/speech";
 import { exportProfile, fromRecoveryCode, importProfileFile, toRecoveryCode } from "@/lib/backup";
 import { downloadCertificate } from "@/lib/certificate";
@@ -98,6 +99,15 @@ function App() {
             setView("session");
           }}
         />
+      </main>
+    );
+  }
+
+  if (view === "voicecheck") {
+    return (
+      <main className="min-h-screen bg-background">
+        <Header online={online} />
+        <VoiceCheck onDone={() => setView("home")} />
       </main>
     );
   }
