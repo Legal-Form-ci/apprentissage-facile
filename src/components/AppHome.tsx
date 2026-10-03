@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import {
   Award,
   BarChart3,
@@ -26,7 +26,7 @@ import { ClarityButton } from "@/components/ClarityButton";
 import { VoiceCheck } from "@/components/VoiceCheck";
 import { downloadCertificate } from "@/lib/certificate";
 import { askPermission, loadReminder, saveReminder } from "@/lib/reminders";
-import { fromRecoveryCode, importProfileFile, toRecoveryCode, exportProfile } from "@/lib/backup";
+import { toRecoveryCode, exportProfile } from "@/lib/backup";
 import { hasCertificate, masteredCount, progressPercent, type Profile } from "@/lib/store";
 import { speak } from "@/lib/speech";
 
@@ -194,7 +194,7 @@ function HomeTab({
   );
 }
 
-function QuickAction({ icon, title, text, onClick }: { icon: React.ReactNode; title: string; text: string; onClick: () => void }) {
+function QuickAction({ icon, title, text, onClick }: { icon: ReactNode; title: string; text: string; onClick: () => void }) {
   return (
     <button type="button" className="quick-card" onClick={onClick}>
       <span className="quick-icon">{icon}</span>
