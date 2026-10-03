@@ -63,9 +63,9 @@ export function Classroom({
           {onRepeat ? (
             <button
               onClick={onRepeat}
-              className="mt-2 inline-flex items-center gap-2 rounded-full bg-accent px-4 py-2 text-base font-bold text-accent-foreground"
+              className="mt-2 inline-flex h-11 w-11 items-center justify-center rounded-full bg-accent text-xl font-bold text-accent-foreground" aria-label="Réécouter" title="Réécouter"
             >
-              🔁 Redis-moi
+              🔁
             </button>
           ) : null}
         </div>
