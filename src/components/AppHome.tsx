@@ -88,25 +88,13 @@ export function AppHome({
         ) : null}
         {tab === "progress" ? <ProgressTab profile={profile} percent={percent} level={level} /> : null}
         {tab === "profile" ? (
-          <ProfileTab
-            profile={profile}
-            level={level}
-            onRestore={onRestore}
-            onReset={() => {
-              if (window.confirm("Recommencer un nouveau parcours ?")) onRestore({} as Profile);
-            }}
-          />
+          <ProfileTab profile={profile} level={level} onRestore={onRestore} />
         ) : null}
       </main>
 
       <BottomNav tab={tab} setTab={setTab} />
       {showMore ? (
-        <MoreSheet
-          onClose={() => setShowMore(false)}
-          profile={profile}
-          level={level}
-          onRestore={onRestore}
-        />
+        <MoreSheet onClose={() => setShowMore(false)} profile={profile} level={level} />
       ) : null}
     </div>
   );
