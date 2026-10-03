@@ -1,6 +1,6 @@
 // Sauvegarde et récupération du parcours, hors connexion.
 
-import { emptyProfile, saveProfile, type Profile } from "./store";
+import { emptyProfile, normalizeProfile, saveProfile, type Profile } from "./store";
 
 /** Télécharge le parcours dans un petit fichier à garder sur le téléphone. */
 export function exportProfile(profile: Profile) {
@@ -27,7 +27,7 @@ export function fromRecoveryCode(code: string): Profile | null {
     const json = decodeURIComponent(window.atob(code.trim()));
     const parsed = JSON.parse(json) as Profile;
     if (!parsed?.id) return null;
-    return { ...emptyProfile(), ...parsed };
+    return normalizeProfile(parsed);
   } catch {
     return null;
   }
@@ -39,7 +39,7 @@ export async function importProfileFile(file: File): Promise<Profile | null> {
     const parsed = JSON.parse(text) as { profile?: Profile } | Profile;
     const profile = (parsed as { profile?: Profile }).profile ?? (parsed as Profile);
     if (!profile?.id) return null;
-    const restored = { ...emptyProfile(), ...profile };
+    const restored = normalizeProfile(profile);
     saveProfile(restored);
     return restored;
   } catch {
