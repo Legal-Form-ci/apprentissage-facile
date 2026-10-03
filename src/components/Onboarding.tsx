@@ -9,7 +9,7 @@ import { emptyProfile, saveProfile, type Profile } from "@/lib/store";
 type Step = "name" | "city" | "phone" | "gender" | "done";
 
 const WELCOME =
-  "Bonjour. Je suis Inocent KOFFI. Je suis là pour t'apprendre à lire et à écrire, progressivement. Avant de commencer, il faut noter que je suis ton ami, et je vais m'adapter à ton niveau d'apprentissage. Maintenant, comment tu t'appelles ? Dis-moi ton nom et ton prénom.";
+  "Bonjour. Je suis ton enseignant. On va apprendre ensemble, tranquillement, une petite chose à la fois. Comment tu t'appelles ?";
 
 function cleanName(said: string) {
   return said
