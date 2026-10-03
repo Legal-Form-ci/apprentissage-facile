@@ -244,7 +244,7 @@ function ProgressTab({ profile, percent, level }: { profile: Profile; percent: n
   );
 }
 
-function Stat({ icon, value, label }: { icon: React.ReactNode; value: string; label: string }) {
+function Stat({ icon, value, label }: { icon: ReactNode; value: string; label: string }) {
   return <div className="stat-card"><span>{icon}</span><strong>{value}</strong><small>{label}</small></div>;
 }
 
