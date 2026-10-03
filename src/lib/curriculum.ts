@@ -12,6 +12,7 @@ export type SkillState =
   | "consolidee";
 
 export type Activity =
+  | { kind: "oral"; id: string; prompt: string; expected: string; visual: string }
   | { kind: "letter"; id: string; upper: string; lower: string; sound: string; name: string; example: string }
   | { kind: "syllable"; id: string; parts: [string, string]; syllable: string }
   | { kind: "word"; id: string; pieces: string[]; word: string; hint: string }
@@ -102,8 +103,9 @@ function pick<T>(list: T[], index: number): T {
 /** Lettres déjà vues : UNE nouvelle lettre par jour au niveau 1, deux ensuite. */
 export function lettersKnown(day: number): string[] {
   const d = Math.max(1, day);
-  const count = d <= DAYS_PER_LEVEL ? d : DAYS_PER_LEVEL + (d - DAYS_PER_LEVEL) * 2;
-  return ORDER.slice(0, Math.min(ORDER.length, Math.max(1, count)));
+  if (d === 1) return [];
+  const count = d <= 10 ? Math.ceil((d - 1) / 2) : 5 + Math.floor((d - 10) / 2);
+  return ORDER.slice(0, Math.min(ORDER.length, count));
 }
 
 function syllablesFor(known: string[]): Array<[string, string]> {
@@ -112,6 +114,10 @@ function syllablesFor(known: string[]): Array<[string, string]> {
   const out: Array<[string, string]> = [];
   for (const c of consonants) for (const v of vowels) out.push([c, v]);
   return out;
+}
+
+function oralActivity(id: string, prompt: string, expected: string, visual: string): Activity {
+  return { kind: "oral", id, prompt, expected, visual };
 }
 
 function letterActivity(upper: string, idPrefix = "letter"): Activity {
@@ -143,84 +149,61 @@ export function buildLesson(day: number, review: string[] = []): Lesson {
   const d = Math.max(1, day);
   const level = levelOf(d);
   const known = lettersKnown(d);
-  const newLetter = known[known.length - 1] ?? "A";
+  const newLetter = known[known.length - 1];
   const activities: Activity[] = [];
 
-  // 1) Révision automatique des sons difficiles (une seule, pour ne pas lasser)
+  // Jour 1 : prélecture. Aucun texte à décoder.
+  if (d === 1) {
+    activities.push(
+      oralActivity("oral-bonjour", "Dis bonjour avec moi. Bonjour !", "bonjour", "👋"),
+      oralActivity("oral-vocal", "Écoute ma voix. Puis dis : ah.", "ah", "👂"),
+      oralActivity("oral-oui", "Écoute. Je dis oui. À toi : oui.", "oui", "🗣️"),
+      { kind: "count", id: "count-1", question: "Regarde les trois objets. Compte avec moi.", answer: 3 },
+    );
+    return { day: d, level, title: "Jour 1 — J'écoute, je parle et je découvre", activities };
+  }
+
   const reviewLetter = review
     .map((id) => id.replace(/^letter-|^review-/, "").toUpperCase())
     .find((u) => u.length === 1 && known.includes(u) && u !== newLetter);
+
   if (reviewLetter) activities.push(letterActivity(reviewLetter, "review"));
+  if (newLetter) activities.push(letterActivity(newLetter));
 
-  // 2) La lettre du jour
-  activities.push(letterActivity(newLetter));
-  if (level >= 2) {
-    const second = known[known.length - 2];
-    if (second) activities.push(letterActivity(second));
-  }
-
-  // 3) Les syllabes
   const syls = syllablesFor(known);
-  if (syls.length > 0) {
-    activities.push({
-      kind: "syllable",
-      id: `syl-${pick(syls, d - 1).join("")}`,
-      parts: pick(syls, d - 1),
-      syllable: pick(syls, d - 1).join(""),
-    });
-    if (level >= 2 && syls.length > 1) {
-      const s2 = pick(syls, d + 3);
-      activities.push({ kind: "syllable", id: `syl-${s2.join("")}`, parts: s2, syllable: s2.join("") });
-    }
+  if (syls.length > 0 && known.filter((l) => !VOWELS.includes(l)).length >= 1) {
+    const s = pick(syls, d - 1);
+    activities.push({ kind: "syllable", id: `syl-${s.join("")}`, parts: s, syllable: s.join("") });
   }
 
-  // 4) Les mots (dès le niveau 2)
   if (level >= 2) {
-    const readable = WORDS.filter((w) => w.needs.split("").every((c) => known.includes(c)));
+    const readable = WORDS.filter((w) => w.needs.split("").every((letter) => known.includes(letter)));
     if (readable.length > 0) {
       const w = pick(readable, d - 1);
       activities.push({ kind: "word", id: `word-${w.word}`, pieces: w.pieces, word: w.word, hint: w.hint });
     }
   }
 
-  // 5) Lecture à voix haute, progressive : mot → phrase → texte (niveau 3+)
   if (level >= 3) {
     const bank = READINGS[Math.min(READINGS.length - 1, level - 3)] as string[];
     const text = pick(bank, d - 1);
-    activities.push({
-      kind: "read",
-      id: `read-${level}-${d}`,
-      text,
-      hint: level <= 3 ? "lis à voix haute" : "lis tout le texte, doucement",
-    });
+    activities.push({ kind: "read", id: `read-${level}-${d}`, text, hint: "lis à voix haute" });
   }
 
-  // 6) Écriture : seulement en FIN de niveau (les 6 derniers jours du niveau)
   const dayInLevel = ((d - 1) % DAYS_PER_LEVEL) + 1;
-  if (level >= 2 && dayInLevel > DAYS_PER_LEVEL - 6) {
+  if (newLetter && level >= 2 && dayInLevel > DAYS_PER_LEVEL - 6) {
     activities.push({ kind: "write", id: `write-${newLetter}`, target: newLetter });
   }
 
-  // 7) Dictée (niveau 5)
   if (level >= 5) {
     const text = pick(DICTATIONS, d - 1);
-    activities.push({
-      kind: "dictation",
-      id: `dictee-${d}`,
-      text,
-      seconds: Math.max(40, Math.min(120, text.length * 3)),
-    });
+    activities.push({ kind: "dictation", id: `dictee-${d}`, text, seconds: Math.max(40, Math.min(120, text.length * 3)) });
   }
 
-  // 8) Compter, et l'argent du quotidien
-  const count = ((d - 1) % 9) + 2;
-  activities.push({
-    kind: "count",
-    id: `count-${count}`,
-    question: "Compte avec moi. Combien de choses vois-tu ?",
-    answer: count,
-  });
-  if (d >= 4) {
+  const count = d === 2 ? 2 : Math.min(5, ((d - 3) % 4) + 2);
+  activities.push({ kind: "count", id: `count-${count}`, question: "Compte les objets et dis-moi combien il y en a.", answer: count });
+
+  if (d >= 7) {
     const money = pick(MONEY, d - 1);
     activities.push({ kind: "money", id: `money-${d}`, question: money.question, answer: money.answer });
   }
