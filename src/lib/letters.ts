@@ -13,7 +13,7 @@ export type LetterInfo = {
 
 export const ALPHABET: LetterInfo[] = [
   { upper: "A", lower: "a", sound: "a", beginnerSound: "a", example: "comme dans ananas" },
-  { upper: "B", lower: "b", sound: "bé", beginnerSound: "m", example: "comme dans banane" },
+  { upper: "B", lower: "b", sound: "bé", beginnerSound: "b", example: "comme dans banane" },
   { upper: "C", lower: "c", sound: "cé", beginnerSound: "k", example: "comme dans cola" },
   { upper: "D", lower: "d", sound: "dé", beginnerSound: "d", example: "comme dans dodo" },
   { upper: "E", lower: "e", sound: "eu", beginnerSound: "e", example: "comme dans école" },
