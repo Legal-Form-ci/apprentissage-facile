@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";\nimport { ArrowLeft, Volume2 } from "lucide-react";
 import { Classroom, type Pose } from "./Classroom";
 import { GuidedWriting } from "./GuidedWriting";
 import {
