@@ -51,37 +51,16 @@ function stepsFor(a: Activity): Step[] {
       ];
     case "letter":
       return [
-        {
-          say: `Regarde bien le tableau. Ici, tu vois le son... ${a.sound}.`,
-          show: a.upper,
-          tap: true,
-        },
-        {
-          say: `Ici, c'est la petite forme. Elle fait aussi... ${a.sound}.`,
-          show: a.lower,
-          tap: true,
-        },
-        {
-          say: `La grande et la petite font le même son... ${a.sound}. ${a.example}.`,
-          show: `${a.upper} ${a.lower}`,
-          tap: true,
-        },
-        {
-          say: `Maintenant, à toi. Dis avec moi : ${a.sound}.`,
-          show: `${a.upper} ${a.lower}`,
-          pose: "listen",
-        },
+        { say: `Voici la lettre ${a.upper}. Écoute le mot repère : ${a.example}.`, show: a.upper, tap: true },
+        { say: `Voici la petite forme : ${a.lower}.`, show: a.lower, tap: true },
+        { say: "À toi. Dis le nom de la lettre.", show: a.upper, pose: "listen" },
       ];
     case "syllable":
       return [
-        { say: `Écoute. Ici j'ai ${soundForPart(a.parts[0])}.`, show: a.parts[0], tap: true },
-        { say: `Et ici j'ai ${soundForPart(a.parts[1])}.`, show: a.parts[1], tap: true },
-        {
-          say: `${soundForPart(a.parts[0])}... ${soundForPart(a.parts[1])}... ${a.syllable}.`,
-          show: `${a.parts[0]} + ${a.parts[1]} = ${a.syllable}`,
-          tap: true,
-        },
-        { say: `À toi. Lis tout seul : ${a.syllable}.`, show: a.syllable, pose: "listen" },
+        { say: `Regarde : ${a.parts[0]}.`, show: a.parts[0], tap: true },
+        { say: `Regarde : ${a.parts[1]}.`, show: a.parts[1], tap: true },
+        { say: `Je les assemble : ${a.syllable}.`, show: a.syllable, tap: true },
+        { say: `À toi. Lis : ${a.syllable}.`, show: a.syllable, pose: "listen" },
       ];
     case "word":
       return [
