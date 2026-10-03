@@ -13,6 +13,7 @@ import {
   loadProfile,
   masteredCount,
   progressPercent,
+  hasCertificate,
   resetProfile,
   saveProfile,
   type Profile,
@@ -70,16 +71,7 @@ function App() {
     };
   }, []);
 
-  // Synchronisation invisible dès que la connexion revient
-  useEffect(() => {
-    if (!profile?.pendingSync || !online) return;
-    const t = setTimeout(() => {
-      const synced = { ...profile, pendingSync: false };
-      saveProfile(synced);
-      setProfile(synced);
-    }, 1500);
-    return () => clearTimeout(t);
-  }, [profile, online]);
+  // Tant qu’aucun serveur de synchronisation n’est configuré, on ne prétend pas que les données sont synchronisées.\n  // pendingSync reste disponible pour le futur moteur de synchronisation multi-appareils.
 
   if (view === "loading") {
     return (
@@ -126,7 +118,7 @@ function App() {
   }
 
   if (view === "celebrate") {
-    const level = Math.min(6, Math.max(1, Math.ceil(profile.day / 30)));
+    const level = Math.min(5, Math.max(1, Math.ceil(Math.max(1, profile.day - 1) / 30)));
     return (
       <main className="min-h-screen bg-background">
         <Header online={online} />
@@ -135,15 +127,13 @@ function App() {
           <h1 className="font-display mt-4 text-4xl text-foreground">
             Bravo {profile.name || "à toi"} !
           </h1>
-          <p className="mt-3 text-xl text-muted-foreground">
-            Défi terminé. Tu as gagné {profile.stars} étoiles. Reviens demain, on continue.
-          </p>
+          <p className="mt-3 text-xl text-muted-foreground">\n            Défi terminé. Tu as gagné {profile.stars} étoiles. Reviens demain, on continue.\n          </p>
           <div className="mt-6 rounded-3xl bg-card p-6 shadow-warm">
             <p className="text-sm font-semibold tracking-widest text-muted-foreground">
-              CERTIFICAT — NIVEAU {level}
+              {hasCertificate(profile, level) ? `CERTIFICAT — NIVEAU ${level}` : `NIVEAU ${level} EN COURS`}
             </p>
             <p className="mt-2 text-lg text-card-foreground">
-              {masteredCount(profile)} compétences maîtrisées
+              {masteredCount(profile)} compétences maîtrisées{hasCertificate(profile, level) ? " · certificat validé" : " · continue ton parcours"}
             </p>
           </div>
           <button
@@ -276,7 +266,7 @@ function Tools({
   const [code, setCode] = useState("");
   const [msg, setMsg] = useState("");
   const [reminder, setReminder] = useState(() => loadReminder());
-  const level = Math.min(6, Math.max(1, Math.ceil(profile.day / 30)));
+  const level = Math.min(5, Math.max(1, Math.ceil(Math.max(1, profile.day - 1) / 30)));
 
   function updateReminder(next: typeof reminder) {
     setReminder(next);
@@ -352,12 +342,18 @@ function Tools({
 
           <div className="space-y-2">
             <p className="font-semibold text-card-foreground">🏅 Mon certificat</p>
-            <button
-              onClick={() => downloadCertificate(profile, level)}
-              className="w-full rounded-2xl bg-accent px-4 py-3 font-bold text-accent-foreground"
-            >
-              Télécharger mon certificat (PDF)
-            </button>
+            {hasCertificate(profile, level) ? (
+              <button
+                onClick={() => downloadCertificate(profile, level)}
+                className="w-full rounded-2xl bg-accent px-4 py-3 font-bold text-accent-foreground"
+              >
+                Télécharger mon certificat (PDF)
+              </button>
+            ) : (
+              <p className="rounded-2xl bg-secondary px-4 py-3 text-sm font-semibold text-secondary-foreground">
+                Le certificat apparaîtra ici lorsque le niveau sera réellement validé.
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -397,7 +393,7 @@ function Header({ online }: { online: boolean }) {
     <header className="flex items-center justify-between px-4 pt-4">
       <p className="font-display text-lg text-foreground">N'nvlé Déclic</p>
       <span className="rounded-full bg-secondary px-3 py-1 text-xs font-semibold text-secondary-foreground">
-        {online ? "☁️ Synchronisé" : "📴 Hors connexion — ça marche quand même"}
+        {online ? "🌐 En ligne — parcours sauvegardé" : "📴 Hors connexion — parcours sauvegardé"}
       </span>
     </header>
   );
