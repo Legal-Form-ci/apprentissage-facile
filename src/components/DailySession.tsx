@@ -17,7 +17,7 @@ import { ALPHABET, strokeAdvice } from "@/lib/letters";
 import { startNoiseWatch, stopNoiseWatch } from "@/lib/noise";
 import { hardestSkills, remember } from "@/lib/memory";
 import { think } from "@/lib/tutor";
-import { recordAnswer, saveProfile, type Profile } from "@/lib/store";
+import { dueSkillIds, recordAnswer, saveProfile, type Profile } from "@/lib/store";
 
 const NUMBER_WORDS: Record<string, number> = {
   zero: 0, un: 1, une: 1, deux: 2, trois: 3, quatre: 4, cinq: 5, six: 6,
@@ -171,7 +171,8 @@ export function DailySession({
   onFinish: () => void;
 }) {
   const level = levelOf(profile.day);
-  const lesson = buildLesson(profile.day, hardestSkills(3));
+  const reviewIds = [...dueSkillIds(profile, 3), ...hardestSkills(3)];
+  const lesson = buildLesson(profile.day, [...new Set(reviewIds)].slice(0, 4));
   const index = Math.min(Math.max(0, profile.activityIndex), lesson.activities.length - 1);
   const activity = lesson.activities[index] as Activity;
   const steps = stepsFor(activity);
