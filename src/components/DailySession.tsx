@@ -441,12 +441,17 @@ export function DailySession({
   }
 
   return (
-    <div className="mx-auto w-full max-w-xl space-y-4 px-4 py-5">
-      <div className="flex items-center justify-between text-sm font-semibold text-muted-foreground" aria-label={`Progression de la séance`}>
-        <span aria-hidden="true">🎯</span>
-        <span aria-hidden="true">{index + 1} / {lesson.activities.length}</span>
+    <div className="mx-auto w-full max-w-2xl px-4 pb-8 pt-2 sm:px-6">
+      <header className="session-topbar">
+        <button type="button" className="icon-button" onClick={() => onExit?.()} aria-label="Quitter la séance"><ArrowLeft size={21} /></button>
+        <div className="session-brand"><img src="/logo.png" alt="" /><span>Apprentissage</span></div>
+        <button type="button" className="icon-button" onClick={() => void say(line, pose)} aria-label="Réécouter"><Volume2 size={20} /></button>
+      </header>
+      <div className="session-progress-head">
+        <span>SÉANCE</span>
+        <strong>{index + 1} / {lesson.activities.length}</strong>
       </div>
-      <div className="h-3 w-full overflow-hidden rounded-full bg-secondary">
+      <div className="session-progress-track">
         <div
           className="h-full rounded-full bg-primary transition-all"
           style={{ width: `${((index + 1) / lesson.activities.length) * 100}%` }}
