@@ -32,8 +32,8 @@ export function Classroom({
 
         {/* Le bâton de l'enseignant, qui montre ce qui est écrit */}
         <div
-          className={`pointer-events-none absolute bottom-3 right-3 h-40 w-2 origin-bottom rounded-full bg-[#c9a06a] ${
-            speaking ? "animate-point-tap" : "rotate-[35deg]"
+          className={`pointer-events-none absolute bottom-3 right-3 h-40 w-2 origin-bottom rounded-full bg-[#c9a06a] transition-transform duration-300 ${
+            pose === "point" ? (speaking ? "animate-point-tap" : "rotate-[35deg]") : "rotate-[70deg] translate-y-2 opacity-50"
           }`}
         />
       </div>
