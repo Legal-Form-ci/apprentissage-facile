@@ -33,6 +33,8 @@ export function Onboarding({ onReady }: { onReady: (p: Profile) => void }) {
   const [speaking, setSpeaking] = useState(false);
   const [listening, setListening] = useState(false);
   const [needsUnlock, setNeedsUnlock] = useState(false);
+  const [manualMode, setManualMode] = useState(false);
+  const [manualValue, setManualValue] = useState("");
   const alive = useRef(true);
   const started = useRef(false);
 
@@ -119,6 +121,42 @@ export function Onboarding({ onReady }: { onReady: (p: Profile) => void }) {
     if (current === "done") await finish({ ...profile, onboardingComplete: true });
   }, [finish, say]);
 
+  const submitManual = useCallback(async () => {
+    const value = manualValue.trim();
+    if (!value) return;
+    let profile = draft;
+    if (step === "name") {
+      const name = cleanName(value);
+      if (!name) return;
+      profile = { ...profile, name, pendingSync: true };
+      remember("note", `Se présente comme « ${name} ».`);
+    } else if (step === "city") {
+      profile = { ...profile, city: value, pendingSync: true };
+    } else if (step === "phone") {
+      profile = { ...profile, phone: value, pendingSync: true };
+    } else if (step === "gender") {
+      const normalized = value.toLowerCase();
+      if (!["garçon", "garcon", "fille", "homme", "femme"].some((v) => normalized.includes(v))) return;
+      profile = {
+        ...profile,
+        gender: normalized.includes("fille") || normalized.includes("femme") ? "fille" : "garcon",
+        pendingSync: true,
+      };
+    } else return;
+
+    const nextStep: Step =
+      step === "name" ? "city" : step === "city" ? "phone" : step === "phone" ? "gender" : "done";
+    setDraft(profile);
+    setStep(nextStep);
+    setManualValue("");
+    saveProfile({ ...profile, onboardingComplete: nextStep === "done" });
+    if (nextStep === "done") {
+      await finish({ ...profile, onboardingComplete: true });
+    } else {
+      await say(questionFor(nextStep, profile.name));
+    }
+  }, [draft, finish, manualValue, say, step]);
+
   const start = useCallback(() => {
     if (started.current) return;
     started.current = true;
@@ -128,6 +166,15 @@ export function Onboarding({ onReady }: { onReady: (p: Profile) => void }) {
 
   useEffect(() => {
     alive.current = true;
+    if (!canListen()) {
+      setManualMode(true);
+      void say(WELCOME);
+      return () => {
+        alive.current = false;
+        stopNoiseWatch();
+        stopSpeaking();
+      };
+    }
     // On essaie immédiatement. Si le téléphone bloque la voix avant un geste,
     // toute la scène devient l'unique grande zone de démarrage.
     const timer = setTimeout(() => {
@@ -145,12 +192,7 @@ export function Onboarding({ onReady }: { onReady: (p: Profile) => void }) {
   }, []); // démarrage unique
 
   return (
-    <button
-      type="button"
-      onClick={needsUnlock ? () => { started.current = false; start(); } : undefined}
-      className="mx-auto block min-h-[calc(100vh-4rem)] w-full max-w-xl space-y-5 bg-background px-4 py-6 text-left"
-      aria-label={needsUnlock ? "Toucher pour démarrer la voix" : "Conversation vocale automatique"}
-    >
+    <div className="mx-auto block min-h-[calc(100vh-4rem)] w-full max-w-xl space-y-5 bg-background px-4 py-6 text-left">
       <Classroom line={line} pose={listening ? "listen" : speaking ? "point" : "happy"} speaking={speaking}>
         <div className="flex min-h-[190px] items-center justify-center">
           <span className={`text-7xl ${listening ? "animate-pulse-soft" : ""}`} aria-hidden="true">
@@ -165,12 +207,44 @@ export function Onboarding({ onReady }: { onReady: (p: Profile) => void }) {
           <p className="text-lg font-semibold text-secondary-foreground">{heardText}</p>
         </div>
       ) : null}
+      {manualMode ? (
+        <div className="space-y-3 rounded-3xl bg-card p-5 shadow-warm">
+          <p className="text-center text-sm font-semibold text-muted-foreground">
+            Le mode vocal n’est pas disponible sur ce navigateur. Tu peux continuer ici.
+          </p>
+          {step === "gender" ? (
+            <div className="grid grid-cols-2 gap-3">
+              <button type="button" onClick={() => setManualValue("garçon")} className="rounded-2xl bg-secondary px-4 py-5 text-xl font-bold text-secondary-foreground">👨 Garçon</button>
+              <button type="button" onClick={() => setManualValue("fille")} className="rounded-2xl bg-secondary px-4 py-5 text-xl font-bold text-secondary-foreground">👩 Fille</button>
+            </div>
+          ) : (
+            <input
+              autoFocus
+              value={manualValue}
+              onChange={(e) => setManualValue(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") void submitManual(); }}
+              type={step === "phone" ? "tel" : "text"}
+              inputMode={step === "phone" ? "tel" : "text"}
+              placeholder={step === "name" ? "Ton nom et ton prénom" : step === "city" ? "Ta ville" : "Ton numéro de téléphone"}
+              className="w-full rounded-2xl border-2 border-border bg-background px-4 py-4 text-xl outline-none focus:border-primary"
+            />
+          )}
+          <button type="button" onClick={() => void submitManual()} disabled={!manualValue.trim()} className="w-full rounded-3xl bg-primary px-5 py-5 text-xl font-bold text-primary-foreground disabled:opacity-40">
+            Continuer ➜
+          </button>
+        </div>
+      ) : null}
+      {needsUnlock ? (
+        <button type="button" onClick={() => { started.current = false; start(); }} className="w-full rounded-3xl bg-primary px-5 py-5 text-xl font-bold text-primary-foreground">
+          👆 Toucher pour démarrer la voix
+        </button>
+      ) : null}
       <div className="flex justify-center gap-3 text-3xl" aria-hidden="true">
         <span className={speaking ? "animate-pulse-soft" : "opacity-30"}>👨🏾‍🏫</span>
         <span>➡️</span>
         <span className={listening ? "animate-pulse-soft" : "opacity-30"}>🎙️</span>
       </div>
       <p className="text-center text-xs text-muted-foreground">Étape {step === "name" ? 1 : step === "city" ? 2 : step === "phone" ? 3 : 4} sur 4 · {draft.name || "…"}</p>
-    </button>
+    </div>
   );
 }
