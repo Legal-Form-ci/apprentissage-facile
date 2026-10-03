@@ -75,7 +75,7 @@ export function emptyProfile(): Profile {
   };
 }
 
-function migrate(raw: Partial<Profile>): Profile {
+export function normalizeProfile(raw: Partial<Profile>): Profile {
   const base = emptyProfile();
   const skills = Object.fromEntries(
     Object.entries(raw.skills ?? {}).map(([id, skill]) => {
@@ -116,7 +116,7 @@ export function loadProfile(): Profile | null {
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<Profile>;
     if (!parsed?.id) return null;
-    const profile = migrate(parsed);
+    const profile = normalizeProfile(parsed);
     // Une migration réussie est persistée sous la nouvelle clé.
     window.localStorage.setItem(KEY, JSON.stringify(profile));
     return profile;
@@ -172,7 +172,7 @@ export function recordAnswer(profile: Profile, skillId: string, ok: boolean, sco
 
   const success = prev.success + (ok ? 1 : 0);
   const fail = prev.fail + (ok ? 0 : 1);
-  const streak = ok ? prev.streak + 1 : 0;
+  const streak = ok ? (prev.streak ?? 0) + 1 : 0;
 
   // Une compétence n'est pas validée sur une seule réussite.
   // Il faut une progression répétée, puis des révisions espacées.
