@@ -15,7 +15,7 @@ const INSTRUCTIONS = [
   "Ne chante pas les voyelles et ne les allonge pas inutilement. Dis une voyelle brièvement et naturellement.",
   "Sois patient, encourageant et respectueux. Une correction doit être courte : montrer, faire essayer, corriger, refaire une fois si nécessaire, puis avancer.",
   "Évite les formulations longues. Une consigne orale = une idée à la fois, généralement une phrase courte.",
-].join(" ")" ");
+].join(" ");
 
 export const speakServer = createServerFn({ method: "POST" })
   .inputValidator((data) =>
