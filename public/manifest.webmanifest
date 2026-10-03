@@ -1,0 +1,15 @@
+{
+  "name": "N'nvlé Déclic",
+  "short_name": "Déclic",
+  "description": "Apprendre à lire, écrire et compter, pas à pas.",
+  "lang": "fr",
+  "dir": "ltr",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#fff7ed",
+  "theme_color": "#c2410c",
+  "icons": [
+    { "src": "/logo.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
