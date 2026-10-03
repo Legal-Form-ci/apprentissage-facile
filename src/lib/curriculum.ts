@@ -158,7 +158,7 @@ export function buildLesson(day: number, review: string[] = []): Lesson {
       oralActivity("oral-bonjour", "Dis bonjour avec moi. Bonjour !", "bonjour", "👋"),
       oralActivity("oral-vocal", "Écoute ma voix. Puis dis : ah.", "ah", "👂"),
       oralActivity("oral-oui", "Écoute. Je dis oui. À toi : oui.", "oui", "🗣️"),
-      { kind: "count", id: "count-1", question: "Regarde les trois objets. Compte avec moi.", answer: 3 },
+      { kind: "count", id: "count-3", question: "Regarde les trois objets. Compte avec moi.", answer: 3 },
     );
     return { day: d, level, title: "Jour 1 — J'écoute, je parle et je découvre", activities };
   }
