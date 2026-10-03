@@ -255,7 +255,6 @@ function ProfileTab({
   profile: Profile;
   level: number;
   onRestore: (profile: Profile) => void;
-  onReset: () => void;
 }) {
   const [reminder, setReminder] = useState(() => loadReminder());
   const certificate = hasCertificate(profile, level);
@@ -332,7 +331,7 @@ function RecoveryCodeRestore({ onRestore }: { onRestore: (profile: Profile) => v
   );
 }
 
-function SettingRow({ icon, title, text, trailing }: { icon: React.ReactNode; title: string; text: string; trailing: React.ReactNode }) {
+function SettingRow({ icon, title, text, trailing }: { icon: ReactNode; title: string; text: string; trailing: ReactNode }) {
   return <div className="setting-row"><span className="setting-icon">{icon}</span><span className="setting-copy"><strong>{title}</strong><small>{text}</small></span>{trailing}</div>;
 }
 
@@ -346,11 +345,11 @@ function BottomNav({ tab, setTab }: { tab: Tab; setTab: (tab: Tab) => void }) {
   );
 }
 
-function NavItem({ active, icon, label, onClick }: { active: boolean; icon: React.ReactNode; label: string; onClick: () => void }) {
+function NavItem({ active, icon, label, onClick }: { active: boolean; icon: ReactNode; label: string; onClick: () => void }) {
   return <button type="button" className={`nav-item ${active ? "active" : ""}`} onClick={onClick}>{icon}<span>{label}</span></button>;
 }
 
-function AppTopBar({ title, online, onBack, action }: { title: string; online?: boolean; onBack?: () => void; action?: React.ReactNode }) {
+function AppTopBar({ title, online, onBack, action }: { title: string; online?: boolean; onBack?: () => void; action?: ReactNode }) {
   return (
     <header className="app-topbar">
       {onBack ? <button className="icon-button" onClick={onBack} aria-label="Retour"><ChevronRight className="rotate-180" /></button> : <div className="brand-mark"><img src="/logo.png" alt="" /><span>{title}</span></div>}
