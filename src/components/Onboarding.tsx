@@ -176,8 +176,9 @@ export function Onboarding({ onReady }: { onReady: (p: Profile) => void }) {
     }
     // On essaie immédiatement. Si le téléphone bloque la voix avant un geste,
     // toute la scène devient l'unique grande zone de démarrage.
-    const timer = setTimeout(() => start(), 200);
+    const timer = window.setTimeout(() => start(), 200);
     return () => {
+      window.clearTimeout(timer);
       alive.current = false;
       stopNoiseWatch();
       stopSpeaking();
