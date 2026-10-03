@@ -14,12 +14,14 @@ export function Classroom({
   pose = "point",
   speaking,
   onRepeat,
+  showTranscript = false,
   children,
 }: {
   line: string;
   pose?: Pose;
   speaking?: boolean;
   onRepeat?: () => void;
+  showTranscript?: boolean;
   children?: ReactNode;
 }) {
   return (
@@ -51,9 +53,13 @@ export function Classroom({
           ) : null}
         </div>
         <div className="flex-1 pb-1">
-          <div className="relative rounded-2xl bg-secondary p-3">
-            <p className="text-xl leading-snug font-semibold text-secondary-foreground">{line}</p>
-          </div>
+          {showTranscript ? (
+            <div className="relative rounded-2xl bg-secondary p-3">
+              <p className="text-xl leading-snug font-semibold text-secondary-foreground">{line}</p>
+            </div>
+          ) : (
+            <p className="sr-only" aria-live="polite">{line}</p>
+          )}
           {onRepeat ? (
             <button
               onClick={onRepeat}
