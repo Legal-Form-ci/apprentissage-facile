@@ -13,7 +13,6 @@ import {
   Mic,
   MoreHorizontal,
   RotateCcw,
-  Settings,
   ShieldCheck,
   Sparkles,
   UserRound,
