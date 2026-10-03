@@ -84,6 +84,7 @@ export function AppHome({
             level={level}
             onStart={onStart}
             onVoiceCheck={() => setShowVoiceCheck(true)}
+            online={online}
           />
         ) : null}
         {tab === "progress" ? <ProgressTab profile={profile} percent={percent} level={level} /> : null}
@@ -106,12 +107,14 @@ function HomeTab({
   level,
   onStart,
   onVoiceCheck,
+  online,
 }: {
   profile: Profile;
   percent: number;
   level: number;
   onStart: () => void;
   onVoiceCheck: () => void;
+  online: boolean;
 }) {
   const firstName = profile.name?.trim().split(/\s+/)[0] || "ami";
   const sessionCount = profile.sessions.length;
