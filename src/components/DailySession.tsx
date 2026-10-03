@@ -45,6 +45,10 @@ type Step = { say: string; show: string; sub?: string; tap?: boolean; pose?: Pos
 
 function stepsFor(a: Activity): Step[] {
   switch (a.kind) {
+    case "oral":
+      return [
+        { say: a.prompt, show: a.visual, pose: "listen" },
+      ];
     case "letter":
       return [
         {
@@ -149,6 +153,7 @@ function stepsFor(a: Activity): Step[] {
 
 function expectedSpoken(a: Activity): string {
   switch (a.kind) {
+    case "oral": return a.expected;
     case "letter": return a.sound;
     case "syllable": return a.syllable;
     case "word": return a.word;
@@ -293,7 +298,8 @@ export function DailySession({
     }
     const msg = ok
       ? (PRAISE[Math.floor(Math.random() * PRAISE.length)] as string)
-      : `Ça va aller. Écoute bien. C'est... ${expectedSpoken(activity)}. Maintenant, dis... ${expectedSpoken(activity)}.`;
+      : "Ce n'est pas grave. Écoute encore une fois, puis essaie.";
+
     await say(msg, ok ? "happy" : "point");
     if (!ok) {
       await pause(400);
@@ -304,7 +310,9 @@ export function DailySession({
       if (canListen() && !isDictation) await answerBySpeech();
       return;
     }
-    if (activity.kind !== "read" && activity.kind !== "dictation") await refinePronunciation(score);
+    if (activity.kind !== "read" && activity.kind !== "dictation" && activity.kind !== "count" && activity.kind !== "money") {
+      await refinePronunciation(score);
+    }
     if (!alive.current) return;
     goNext(updated);
   }
@@ -378,8 +386,7 @@ export function DailySession({
     if (!said.text.trim()) {
       await pause(700);
       if (!alive.current) return;
-      const short = `${expectedSpoken(activity)}. À toi.`;
-      await say(tries === 0 ? `Je t'écoute. Écoute encore : ${short}` : `Doucement. ${short}`, "listen");
+        await say(tries === 0 ? "Je t'écoute. Prends ton temps." : "Prends ton temps. Essaie encore.", "listen");
       if (alive.current) await answerBySpeech(tries + 1);
       return;
     }
@@ -389,7 +396,7 @@ export function DailySession({
   /** Prononciation guidée : on refait dire uniquement ce qui est difficile. */
   async function refinePronunciation(score: number) {
     if (score >= 0.75 || !canListen()) return;
-    await say(`On le dit encore une fois, bien fort : ${expectedSpoken(activity)}.`, "listen");
+    await say("On essaie encore une fois. Écoute bien.", "listen");
     if (!alive.current) return;
     setListening(true);
     const again = await listenOnce(30000);
@@ -400,7 +407,7 @@ export function DailySession({
     await say(
       next > score
         ? "Voilà ! C'est beaucoup mieux. Ta bouche a bien travaillé."
-        : `Ça va aller. Écoute-moi : ${expectedSpoken(activity)}. On avance, tu vas y arriver.`,
+        : "Ce n'est pas grave. On va reprendre tranquillement.",
       next > score ? "happy" : "point",
     );
   }
@@ -436,7 +443,7 @@ export function DailySession({
     const reply = await think({
       heard: said,
       expected: expectedSpoken(activity),
-      situation: `Exercice ${activity.kind} du jour ${lesson.day}`,
+      situation: `Exercice ${activity.kind} du jour ${lesson.day}. L'apprenant est débutant en alphabétisation et peut ne pas lire les textes affichés.`,
       ...(profile.name ? { learner: profile.name } : {}),
     });
     if (!alive.current) return;
@@ -479,6 +486,7 @@ export function DailySession({
         line={line}
         pose={pose}
         speaking={speaking}
+        showTranscript={level >= 3}
         onRepeat={() => void say(step.say, step.pose ?? "point")}
       >
         {activity.kind === "write" && isAnswerStep ? (
@@ -501,8 +509,8 @@ export function DailySession({
         )}
       </Classroom>
 
-      {/* Ce que l'application a détecté : l'apprenant vérifie que c'est bien sa voix */}
-      {heardText ? (
+      {/* La transcription brute n'est utile qu'après les premiers niveaux : au début, elle ajoute du texte inutile. */}
+      {heardText && level >= 3 ? (
         <div className="rounded-2xl bg-secondary p-3" aria-live="polite">
           <p className="text-xs font-bold tracking-widest text-secondary-foreground/70">
             CE QUE J'AI ENTENDU
