@@ -336,7 +336,7 @@ function AppTopBar({ title, online, onBack, action }: { title: string; online?: 
   );
 }
 
-function MoreSheet({ onClose, profile, level, onRestore }: { onClose: () => void; profile: Profile; level: number; onRestore: (p: Profile) => void }) {
+function MoreSheet({ onClose, profile, level }: { onClose: () => void; profile: Profile; level: number }) {
   const [code, setCode] = useState("");
   return (
     <div className="sheet-backdrop" onClick={onClose}>
