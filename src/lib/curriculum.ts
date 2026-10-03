@@ -212,14 +212,14 @@ export function buildLesson(day: number, review: string[] = []): Lesson {
 }
 
 export const PRAISE = [
-  "Bravo ! C'est très bien.",
-  "Ah ! Tu as réussi. Continue comme ça, je suis fier de toi.",
-  "Très bien. Tu progresses vite, tu sais.",
-  "Eh ! Cette fois-ci tu m'as surpris. Bravo !",
+  "Bien.",
+  "Oui, c'est ça.",
+  "Très bien.",
+  "Voilà.",
 ];
 
 export const RETRY = [
-  "Tu es presque arrivé. Écoute encore une fois, on le fait ensemble.",
-  "Ce n'est pas grave du tout. On recommence tranquillement.",
-  "Doucement, ce n'est pas grave. Écoute bien et répète après moi.",
+  "On reprend.",
+  "Essaie encore.",
+  "Écoute encore une fois.",
 ];
