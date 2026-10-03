@@ -13,7 +13,7 @@ import {
   type HeardResult,
 } from "@/lib/speech";
 import { buildLesson, levelOf, PRAISE, type Activity } from "@/lib/curriculum";
-import { ALPHABET, strokeAdvice } from "@/lib/letters";
+import { strokeAdvice } from "@/lib/letters";
 import { startNoiseWatch, stopNoiseWatch } from "@/lib/noise";
 import { hardestSkills, remember } from "@/lib/memory";
 import { think } from "@/lib/tutor";
@@ -32,12 +32,6 @@ function parseNumber(said: string): number | null {
     if (t.includes(word)) return value;
   }
   return null;
-}
-
-/** Son débutant d'un morceau de syllabe (lettre) : « meunn », « aaa »… */
-function soundForPart(part: string): string {
-  const info = ALPHABET.find((l) => l.upper === part.toUpperCase());
-  return info ? info.beginnerSound : part;
 }
 
 /** Un temps de la démonstration : l'enseignant parle et le tableau montre. */
@@ -133,7 +127,7 @@ function stepsFor(a: Activity): Step[] {
 function expectedSpoken(a: Activity): string {
   switch (a.kind) {
     case "oral": return a.expected;
-    case "letter": return a.sound;
+    case "letter": return a.name;
     case "syllable": return a.syllable;
     case "word": return a.word;
     case "read": return a.text;
@@ -448,11 +442,9 @@ export function DailySession({
 
   return (
     <div className="mx-auto w-full max-w-xl space-y-4 px-4 py-5">
-      <div className="flex items-center justify-between text-sm font-semibold text-muted-foreground">
-        <span>🎯 Jour {lesson.day} · niveau {level}</span>
-        <span>
-          {index + 1} / {lesson.activities.length}
-        </span>
+      <div className="flex items-center justify-between text-sm font-semibold text-muted-foreground" aria-label={`Progression de la séance`}>
+        <span aria-hidden="true">🎯</span>
+        <span aria-hidden="true">{index + 1} / {lesson.activities.length}</span>
       </div>
       <div className="h-3 w-full overflow-hidden rounded-full bg-secondary">
         <div
