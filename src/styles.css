@@ -401,3 +401,11 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
 .recovery-inline-row { display: flex; gap: 8px; margin-top: 9px; }
 .recovery-inline-row input { min-width: 0; flex: 1; border: 1px solid var(--border); border-radius: 13px; background: var(--background); padding: 11px 12px; font-size: .76rem; }
 .recovery-inline-row button { border: 0; border-radius: 13px; padding: 0 13px; background: var(--primary); color: var(--primary-foreground); font-size: .75rem; font-weight: 900; }
+
+.session-topbar { height: 58px; display: grid; grid-template-columns: 40px 1fr 40px; align-items: center; gap: 8px; }
+.session-brand { justify-self: center; display: flex; align-items: center; gap: 8px; font-size: .78rem; font-weight: 900; color: var(--muted-foreground); }
+.session-brand img { width: 27px; height: 27px; border-radius: 8px; }
+.session-progress-head { display: flex; justify-content: space-between; align-items: center; margin: 8px 0 7px; color: var(--muted-foreground); font-size: .65rem; font-weight: 900; letter-spacing: .12em; }
+.session-progress-head strong { font-size: .7rem; letter-spacing: 0; }
+.session-progress-track { height: 6px; overflow: hidden; border-radius: 999px; background: var(--secondary); }
+.session-progress-track > div { height: 100%; border-radius: inherit; background: var(--primary); transition: width .35s ease; }
