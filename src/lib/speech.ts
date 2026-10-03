@@ -264,7 +264,7 @@ export function listenOnce(maxMs = 60000): Promise<HeardResult> {
       if (done) return;
       if (Date.now() >= deadline) return finish([...alts][0] ?? "");
       rec = new Ctor() as Recognition;
-      rec.lang = "fr-FR";
+      rec.lang = "fr-CI";
       // continu : on n'arrête pas l'oreille au premier silence
       rec.continuous = true;
       rec.interimResults = true;
