@@ -1,5 +1,5 @@
-// Moteur pédagogique : parcours en 5 niveaux, UNE seule lettre nouvelle par
-// jour au début, révision automatique des sons difficiles, écriture repoussée
+// Moteur pédagogique : parcours en 5 niveaux, une nouvelle correspondance
+// au début, révision automatique des sons difficiles, écriture repoussée
 // à la fin du niveau, puis lecture (mot → phrase → texte) et dictée.
 
 import { ALPHABET, type LetterInfo } from "./letters";
