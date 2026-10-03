@@ -173,13 +173,13 @@
 }
 
 @keyframes teacher-talk {
-  0%, 100% { transform: translateY(0) rotate(-1deg); }
-  50% { transform: translateY(-4px) rotate(1deg); }
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-1px) scale(1.006); }
 }
 
 @keyframes teacher-idle {
   0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-3px); }
+  50% { transform: translateY(-1px); }
 }
 
 @keyframes trace {
