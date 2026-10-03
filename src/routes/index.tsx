@@ -71,7 +71,8 @@ function App() {
     };
   }, []);
 
-  // Tant qu’aucun serveur de synchronisation n’est configuré, on ne prétend pas que les données sont synchronisées.\n  // pendingSync reste disponible pour le futur moteur de synchronisation multi-appareils.
+  // Tant qu’aucun serveur de synchronisation n’est configuré, on ne prétend pas que les données sont synchronisées.
+  // pendingSync reste disponible pour le futur moteur de synchronisation multi-appareils.
 
   if (view === "loading") {
     return (
@@ -127,7 +128,9 @@ function App() {
           <h1 className="font-display mt-4 text-4xl text-foreground">
             Bravo {profile.name || "à toi"} !
           </h1>
-          <p className="mt-3 text-xl text-muted-foreground">\n            Défi terminé. Tu as gagné {profile.stars} étoiles. Reviens demain, on continue.\n          </p>
+          <p className="mt-3 text-xl text-muted-foreground">
+            Défi terminé. Tu as gagné {profile.stars} étoiles. Reviens demain, on continue.
+          </p>
           <div className="mt-6 rounded-3xl bg-card p-6 shadow-warm">
             <p className="text-sm font-semibold tracking-widest text-muted-foreground">
               {hasCertificate(profile, level) ? `CERTIFICAT — NIVEAU ${level}` : `NIVEAU ${level} EN COURS`}
