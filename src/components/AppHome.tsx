@@ -26,7 +26,7 @@ import { ClarityButton } from "@/components/ClarityButton";
 import { VoiceCheck } from "@/components/VoiceCheck";
 import { downloadCertificate } from "@/lib/certificate";
 import { askPermission, loadReminder, saveReminder } from "@/lib/reminders";
-import { toRecoveryCode, exportProfile } from "@/lib/backup";
+import { fromRecoveryCode, importProfileFile, toRecoveryCode, exportProfile } from "@/lib/backup";
 import { hasCertificate, masteredCount, progressPercent, type Profile } from "@/lib/store";
 import { speak } from "@/lib/speech";
 
