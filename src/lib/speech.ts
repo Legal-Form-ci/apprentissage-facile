@@ -123,7 +123,7 @@ export async function speak(text: string, opts: { rate?: number } = {}): Promise
   const shaped = articulate(text, clarity.articulation);
   const natural = await speakNatural(shaped);
   if (!natural) await speakBrowser(shaped, opts);
-  await new Promise((r) => setTimeout(r, clarity.articulation >= 2 ? 320 : 180));
+  await new Promise((r) => setTimeout(r, 120));
 }
 
 function speakBrowser(text: string, opts: { rate?: number } = {}): Promise<void> {
@@ -133,9 +133,9 @@ function speakBrowser(text: string, opts: { rate?: number } = {}): Promise<void>
     try {
       window.speechSynthesis.cancel();
       const u = new SpeechSynthesisUtterance(text);
-      u.lang = "fr-FR";
+      u.lang = "fr-CI";
       u.rate = opts.rate ?? clarity.speed * 0.9;
-      u.pitch = 0.85;
+      u.pitch = 1;
       u.volume = clarity.volume;
       const v = pickVoice();
       if (v) u.voice = v;
@@ -323,13 +323,11 @@ export function normalize(text: string) {
 }
 
 const phoneticAliases: Record<string, string[]> = {
-  aaa: ["a", "ah", "ha", "la", "ta"], iii: ["i", "hi", "y"], ooo: ["o", "oh", "eau", "au"],
-  uuu: ["u", "hu"], eee: ["e", "eu", "heu"],
-  meunn: ["m", "me", "mon", "meun", "mm", "aime"], leurr: ["l", "le", "leur", "lor", "elle"],
-  beurr: ["b", "be", "beu", "bor", "bé"], reurr: ["r", "re", "reur", "ror", "air"],
-  seuss: ["s", "se", "sss", "esse"], teutt: ["t", "te", "tt", "thé"],
-  peupp: ["p", "pe", "pp", "pé"], deudd: ["d", "de", "dd", "dé"],
-  neunn: ["n", "ne", "nn", "aine"], feuff: ["f", "fe", "ff", "effe"],
+  a: ["a", "ah"],
+  i: ["i"],
+  o: ["o", "oh"],
+  u: ["u"],
+  e: ["e", "eu", "heu"],
 };
 
 /** Score approximatif 0..1 entre ce qui est attendu et ce qui a été dit. */
@@ -339,10 +337,9 @@ export function matchScore(expected: string, said: string) {
   if (!a || !b) return 0;
   if (b === a || b.includes(a) || a.includes(b)) return 1;
   if (phoneticAliases[a]?.some((alias) => b === alias || b.includes(alias))) return 0.95;
-  // « aaaaa » pour « a » : on tolère la lettre tenue
-  const squashA = a.replace(/(.)\1+/g, "$1");
-  const squashB = b.replace(/(.)\1+/g, "$1").replace(/\s/g, "");
-  if (squashA === squashB || squashB.includes(squashA)) return 0.9;
+  // Une voyelle peut être tenue naturellement ; on ne transforme plus une suite artificielle
+  // comme « aaaaa » en bonne réponse pour éviter d'enseigner une mauvaise habitude.
+  if (a.length === 1 && /^[aeiouy]$/.test(a) && /^([aeiouy])\1{1,2}$/.test(b) && b[0] === a) return 0.85;
   const dist: number = levenshtein(a, b.slice(0, Math.max(a.length + 3, b.length)));
   return Math.max(0, 1 - dist / Math.max(a.length, 1));
 }
