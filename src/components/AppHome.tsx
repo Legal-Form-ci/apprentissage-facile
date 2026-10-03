@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import {
   Award,
   BarChart3,
@@ -116,13 +116,15 @@ function HomeTab({
   const firstName = profile.name?.trim().split(/\s+/)[0] || "ami";
   const sessionCount = profile.sessions.length;
 
+  useEffect(() => {
+    void speak(`Bonjour ${firstName}. Je suis ton enseignant. Touche le grand bouton quand tu es prêt à apprendre.`);
+  }, [firstName]);
+
   return (
     <div className="space-y-5">
       <section className="welcome-card">
         <div>
-          <p className="eyebrow">BONJOUR</p>
-          <h1>Bonjour {firstName} 👋</h1>
-          <p>On continue doucement, une petite étape à la fois.</p>
+          <p className="sr-only">Bonjour</p><h1>👋 {firstName}</h1><p>🎧 Écoute ton enseignant.</p>
         </div>
         <div className="welcome-avatar" aria-hidden="true">
           {profile.gender === "fille" ? "👩🏾" : "👨🏾"}
@@ -132,9 +134,7 @@ function HomeTab({
       <section className="lesson-card">
         <div className="lesson-card-top">
           <div>
-            <span className="lesson-badge"><Sparkles size={14} /> À faire aujourd'hui</span>
-            <h2>Mon apprentissage</h2>
-            <p>Une courte séance adaptée à ton parcours.</p>
+            <span className="lesson-badge"><Sparkles size={14} /> 🎧</span><h2>👨🏾‍🏫</h2><p className="sr-only">Une courte séance adaptée à ton parcours.</p>
           </div>
           <div className="day-orb" aria-label={`Jour ${profile.day}`}>
             <strong>{profile.day}</strong>
@@ -142,12 +142,11 @@ function HomeTab({
           </div>
         </div>
         <button type="button" className="primary-action" onClick={onStart}>
-          Commencer
+          🎧 Écouter et apprendre
           <ChevronRight size={22} />
         </button>
         <div className="lesson-meta">
-          <span><Clock3 size={16} /> Environ 15 min</span>
-          <span><Flame size={16} /> {profile.stars} étoiles</span>
+          <span><Clock3 size={16} /> ~15 min</span><span><Flame size={16} /> {profile.stars}</span>
         </div>
       </section>
 
@@ -169,13 +168,13 @@ function HomeTab({
       </section>
 
       <section className="quick-grid">
-        <QuickAction icon={<Mic />} title="Tester le micro" text="Vérifier la voix" onClick={onVoiceCheck} />
-        <QuickAction icon={<Volume2 />} title="Écouter" text="Réécouter l'accueil" onClick={() => void speak(`Bonjour ${profile.name}. On continue ensemble.`)} />
+        <QuickAction icon={<Mic />} title="🎙️" text="Tester le micro" onClick={onVoiceCheck} />
+        <QuickAction icon={<Volume2 />} title="🔊" text="Réécouter" onClick={() => void speak(`Bonjour ${profile.name}. Écoute ma voix et touche le grand bouton quand tu es prêt.`)} />
       </section>
 
-      <div className="offline-note">
-        {typeof navigator !== "undefined" && navigator.onLine ? <Wifi size={16} /> : <WifiOff size={16} />}
-        <span>Ton parcours est enregistré sur ce téléphone.</span>
+      <div className="offline-note" aria-label={online ? "Connexion disponible" : "Fonctionnement hors connexion"}>
+        {online ? <Wifi size={16} /> : <WifiOff size={16} />}
+        <span className="sr-only">{online ? "Connexion disponible." : "L'application continue de fonctionner hors connexion."}</span>
       </div>
     </div>
   );
@@ -326,9 +325,9 @@ function SettingRow({ icon, title, text, trailing }: { icon: ReactNode; title: s
 function BottomNav({ tab, setTab }: { tab: Tab; setTab: (tab: Tab) => void }) {
   return (
     <nav className="bottom-nav" aria-label="Navigation principale">
-      <NavItem active={tab === "home"} icon={<Home />} label="Accueil" onClick={() => setTab("home")} />
-      <NavItem active={tab === "progress"} icon={<BarChart3 />} label="Progrès" onClick={() => setTab("progress")} />
-      <NavItem active={tab === "profile"} icon={<UserRound />} label="Profil" onClick={() => setTab("profile")} />
+      <NavItem active={tab === "home"} icon={<Home />} label="Accueil" onClick={() => { setTab("home"); void speak("Accueil."); }} />
+      <NavItem active={tab === "progress"} icon={<BarChart3 />} label="Progrès" onClick={() => { setTab("progress"); void speak("Tes progrès."); }} />
+      <NavItem active={tab === "profile"} icon={<UserRound />} label="Profil" onClick={() => { setTab("profile"); void speak("Ton profil."); }} />
     </nav>
   );
 }
