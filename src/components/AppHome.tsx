@@ -298,9 +298,37 @@ function ProfileTab({
           navigator.clipboard?.writeText(code);
           window.alert("Code de récupération copié.");
         }}><RotateCcw size={18} /><span><strong>Code de récupération</strong><small>Retrouver le parcours sur un autre téléphone</small></span><ChevronRight size={18} /></button>
+        <label className="list-action">
+          <Download size={18} />
+          <span><strong>Importer une sauvegarde</strong><small>Restaurer un fichier de parcours</small></span>
+          <ChevronRight size={18} />
+          <input type="file" accept="application/json" className="sr-only" onChange={async (e) => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+            const restored = await importProfileFile(file);
+            if (restored) onRestore(restored);
+          }} />
+        </label>
+        <RecoveryCodeRestore onRestore={onRestore} />
       </section>
 
       <p className="legal-note">N'nvlé Déclic respecte ton rythme. Tes données de progression restent sur ton appareil tant qu'aucun service de synchronisation n'est configuré.</p>
+    </div>
+  );
+}
+
+function RecoveryCodeRestore({ onRestore }: { onRestore: (profile: Profile) => void }) {
+  const [code, setCode] = useState("");
+  return (
+    <div className="recovery-inline">
+      <div className="settings-title"><RotateCcw size={18} /><span>Restaurer avec un code</span></div>
+      <div className="recovery-inline-row">
+        <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="Colle ton code ici" />
+        <button onClick={() => {
+          const restored = fromRecoveryCode(code);
+          if (restored) onRestore(restored);
+        }}>Restaurer</button>
+      </div>
     </div>
   );
 }
