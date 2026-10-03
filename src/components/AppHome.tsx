@@ -11,7 +11,6 @@ import {
   Headphones,
   Home,
   Mic,
-  MoreHorizontal,
   RotateCcw,
   ShieldCheck,
   Sparkles,
@@ -19,7 +18,6 @@ import {
   Volume2,
   Wifi,
   WifiOff,
-  X,
 } from "lucide-react";
 import { ClarityButton } from "@/components/ClarityButton";
 import { VoiceCheck } from "@/components/VoiceCheck";
@@ -44,7 +42,6 @@ export function AppHome({
 }) {
   const [tab, setTab] = useState<Tab>("home");
   const [showVoiceCheck, setShowVoiceCheck] = useState(false);
-  const [showMore, setShowMore] = useState(false);
   const percent = progressPercent(profile);
   const level = Math.min(5, Math.max(1, Math.ceil(Math.max(1, profile.day - 1) / 30)));
 
@@ -61,20 +58,7 @@ export function AppHome({
 
   return (
     <div className="app-screen">
-      <AppTopBar
-        title="N'nvlé Déclic"
-        online={online}
-        action={
-          <button
-            type="button"
-            onClick={() => setShowMore(true)}
-            className="icon-button"
-            aria-label="Plus d'options"
-          >
-            <MoreHorizontal size={22} />
-          </button>
-        }
-      />
+      <AppTopBar title="N'nvlé Déclic" online={online} />
 
       <main className="app-content app-content-bottom-nav">
         {tab === "home" ? (
@@ -94,9 +78,6 @@ export function AppHome({
       </main>
 
       <BottomNav tab={tab} setTab={setTab} />
-      {showMore ? (
-        <MoreSheet onClose={() => setShowMore(false)} profile={profile} level={level} />
-      ) : null}
     </div>
   );
 }
@@ -352,21 +333,3 @@ function AppTopBar({ title, online, onBack, action }: { title: string; online?: 
   );
 }
 
-function MoreSheet({ onClose, profile, level }: { onClose: () => void; profile: Profile; level: number }) {
-  const [code, setCode] = useState("");
-  return (
-    <div className="sheet-backdrop" onClick={onClose}>
-      <section className="more-sheet" onClick={(e) => e.stopPropagation()}>
-        <div className="sheet-handle" />
-        <div className="sheet-title"><h2>Plus</h2><button className="icon-button" onClick={onClose}><X /></button></div>
-        <div className="sheet-grid">
-          <button onClick={() => exportProfile(profile)}><Download /><span>Sauvegarder</span></button>
-          <button onClick={() => { setCode(toRecoveryCode(profile)); }}><RotateCcw /><span>Code de récupération</span></button>
-          {hasCertificate(profile, level) ? <button onClick={() => downloadCertificate(profile, level)}><Award /><span>Certificat</span></button> : null}
-        </div>
-        {code ? <textarea value={code} readOnly className="recovery-code" onClick={(e) => e.currentTarget.select()} /> : null}
-        <p className="sheet-footnote">Tu peux retrouver ton parcours même sans connexion.</p>
-      </section>
-    </div>
-  );
-}
